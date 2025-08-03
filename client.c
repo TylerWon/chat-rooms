@@ -54,6 +54,7 @@ int main() {
     }
 
     freeaddrinfo(res);
+    res = NULL;
 
     while (1) {
         struct message msg;
@@ -87,6 +88,7 @@ int main() {
         printf("sent: %s", msg.text);
 
         free(send_buf);
+        send_buf = NULL;
 
         // Receive reply from server
         char *recv_buf;
@@ -111,6 +113,7 @@ int main() {
         printf("received: %s", reply.text);
 
         free(recv_buf);
+        recv_buf = NULL;
     }
 
     return 0;

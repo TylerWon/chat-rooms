@@ -58,6 +58,7 @@ int main() {
     }
 
     freeaddrinfo(res);
+    res = NULL;
 
     // Set-up socket to listen for incoming connections
     if (listen(listener, BACKLOG_LIMIT) == -1) {
@@ -101,6 +102,7 @@ int main() {
         printf("sent message back\n");
 
         free(buf);
+        buf = NULL;
     }
 
     return 0;
