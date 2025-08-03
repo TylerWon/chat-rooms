@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,7 +9,7 @@
 
 #include "helpers.h"
 
-#define BACKLOG 10
+#define BACKLOG_LIMIT 10
 
 int main() {
     // Get address info for my IP, port 4000
@@ -59,16 +60,16 @@ int main() {
     freeaddrinfo(res);
 
     // Set-up socket to listen for incoming connections
-    if (listen(listener, BACKLOG) == -1) {
+    if (listen(listener, BACKLOG_LIMIT) == -1) {
         perror("listen error");
         return 1;
     }
 
     // Accept connection
     struct sockaddr client_addr;
-    socklen_t client_addr_size;
+    socklen_t client_addr_size = sizeof(client_addr);
     int sockfd;
-    if ((sockfd = accept(listener, &client_addr, &client_addr_size) == -1)) {
+    if ((sockfd = accept(listener, &client_addr, &client_addr_size)) == -1) {
         perror("accept error");
         return 1;
     }
@@ -76,6 +77,52 @@ int main() {
     char ip[INET6_ADDRSTRLEN];
     inet_ntop(client_addr.sa_family, get_in_addr(&client_addr), ip, sizeof(ip));
     printf("connected to: %s, port %s\n", ip, PORT);
+
+    while (1) {
+        // Receive messsage from client
+        char *buf;
+        ssize_t recvd = recvall(sockfd, &buf, 0);
+        if (recvd == -1) {
+            perror("receive error");
+            continue;
+        } else if (recvd == 0) {
+            printf("connection closed\n");
+            return 1;
+        }
+
+        printf("received message\n");
+
+        // Deserialize message
+        struct message *msg;
+        if (deserialize(buf, &msg) != 0) {
+            perror("deserialization error");
+            continue;
+        }
+
+        printf("deserialized message: %s", msg->text);
+
+        // Serialize message
+        free(buf);
+        size_t len;
+        if (serialize(msg, &buf, &len) != 0) {
+            perror("serialization error");
+            continue;
+        }
+
+        printf("serialized message\n");
+
+        // Send reply to client
+        if (sendall(sockfd, buf, len, 0) == -1) {
+            perror("send error");
+            continue;
+        }
+
+        printf("sent: %s", msg->text);
+
+        free(buf);
+        free(msg->text);
+        free(msg);
+    }
 
     return 0;
 }
