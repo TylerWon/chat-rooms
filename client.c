@@ -10,8 +10,6 @@
 
 #include "helpers.h"
 
-#define INPUT_LIMIT 65536 // 2^16 - 1 
-
 int main() {
     // Get address info for my IP, port 4000
     int status;
@@ -58,9 +56,10 @@ int main() {
     freeaddrinfo(res);
 
     while (1) {
+        struct message msg;
+
         // Read user input from STDIN
-        char input[INPUT_LIMIT]; 
-        if (fgets(input, INPUT_LIMIT, stdin) == NULL) {
+        if (fgets(msg.text, sizeof(msg.text), stdin) == NULL) {
             perror("failed to read user input");
             continue;
         }
@@ -68,15 +67,11 @@ int main() {
         clear_previous_line();
 
         printf("read input\n");
-
-        // Create message
-        struct message msg;
-        msg.text = input;
         
         // Serialize message
-        char *buf;
+        char *send_buf;
         size_t len;
-        if (serialize(&msg, &buf, &len) != 0) {
+        if (serialize(&msg, &send_buf, &len) != 0) {
             perror("serialization error");
             continue;
         }
@@ -84,15 +79,18 @@ int main() {
         printf("serialized message\n");
 
         // Send message to server
-        if (sendall(sockfd, buf, len, 0) == -1) {
+        if (sendall(sockfd, send_buf, len, 0) == -1) {
             perror("send error");
             continue;
         }
+
         printf("sent: %s", msg.text);
 
+        free(send_buf);
+
         // Receive reply from server
-        free(buf);
-        ssize_t recvd = recvall(sockfd, &buf, 0);
+        char *recv_buf;
+        ssize_t recvd = recvall(sockfd, &recv_buf, 0);
         if (recvd == -1) {
             perror("receive error");
             continue;
@@ -103,18 +101,16 @@ int main() {
 
         printf("received message\n");
 
-        // Deserialize message
-        struct message *reply;
-        if (deserialize(buf, &reply) != 0) {
+        // Deserialize reply
+        struct message reply;
+        if (deserialize(recv_buf, &reply) != 0) {
             perror("deserialization error");
             continue;
         }
 
-        printf("deserialized message: %s", reply->text);
+        printf("deserialized message: %s", reply.text);
 
-        free(buf);
-        free(reply->text);
-        free(reply);
+        free(recv_buf);
     }
 
     return 0;

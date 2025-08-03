@@ -81,9 +81,7 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     return 0;
 }
 
-int deserialize(char *buf, struct message **msg) {
-    struct message *m = malloc(sizeof(struct message));
-
+int deserialize(char *buf, struct message *msg) {
     // Skip over message length
     buf += MSG_LEN_SIZE;
 
@@ -92,10 +90,7 @@ int deserialize(char *buf, struct message **msg) {
     buf += TEXT_LEN_SIZE;
 
     // Get text 
-    m->text = malloc(text_len);
-    memcpy(m->text, buf, text_len);
-
-    *msg = m;
+    memcpy(msg->text, buf, text_len);
 
     return 0;
 }

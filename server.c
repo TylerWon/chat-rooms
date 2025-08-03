@@ -93,18 +93,18 @@ int main() {
         printf("received message\n");
 
         // Deserialize message
-        struct message *msg;
+        struct message msg;
         if (deserialize(buf, &msg) != 0) {
             perror("deserialization error");
             continue;
         }
 
-        printf("deserialized message: %s", msg->text);
+        printf("deserialized message: %s", msg.text);
 
         // Serialize message
         free(buf);
         size_t len;
-        if (serialize(msg, &buf, &len) != 0) {
+        if (serialize(&msg, &buf, &len) != 0) {
             perror("serialization error");
             continue;
         }
@@ -117,11 +117,9 @@ int main() {
             continue;
         }
 
-        printf("sent: %s", msg->text);
+        printf("sent: %s", msg.text);
 
         free(buf);
-        free(msg->text);
-        free(msg);
     }
 
     return 0;
