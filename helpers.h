@@ -1,9 +1,12 @@
 #define PORT "4000"
 
 typedef uint32_t MSG_LEN;
+typedef uint8_t NAME_LEN;
 typedef uint16_t TEXT_LEN;
 
 #define MSG_LEN_SIZE sizeof(MSG_LEN)
+#define NAME_LEN_SIZE sizeof(NAME_LEN)
+#define NAME_SIZE 50
 #define TEXT_LEN_SIZE sizeof(TEXT_LEN)
 #define TEXT_SIZE 1000
 
@@ -11,6 +14,7 @@ typedef uint16_t TEXT_LEN;
 #define RECV_FLAGS 0
 
 struct message {
+    char name[NAME_SIZE];
     char text[TEXT_SIZE];
 };
 
@@ -36,7 +40,8 @@ ssize_t recvall(int sockfd, char **buf);
 /**
  * Serializes a message to be sent the client/server.
  * 
- * Message structure: message length (4 bytes) | text length (2 bytes) | text (max 1000 bytes)
+ * Message structure: 
+ * message length (4 bytes) | name length (1 byte) | name (max 50 bytes) | text length (2 bytes) | text (max 1000 bytes)
  * 
  * On success, returns 0 and *buf will contain the serialized message while len will be its size in bytes. Otherwise,
  * -1 is returned and errno is set to indicate the error.
@@ -46,7 +51,8 @@ int serialize(struct message *msg, char **buf, size_t *len);
 /**
  * Deserializes a message received from the client/server.
  * 
- * Message structure: message length (4 bytes) | text length (2 bytes) | text (max 1000 bytes)
+ * Message structure: 
+ * message length (4 bytes) | name length (1 byte) | name (max 50 bytes) | text length (2 bytes) | text (max 1000 bytes)
  * 
  * On success, returns 0 and msg will contain the deserialized message. Otherwise, -1 is returned and errno is set to 
  * indicate the error.

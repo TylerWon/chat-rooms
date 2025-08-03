@@ -10,6 +10,8 @@
 
 #include "helpers.h"
 
+#define DEFAULT_NAME "anonymous"
+
 int main() {
     // Get address info for my IP, port 4000
     int status;
@@ -58,6 +60,7 @@ int main() {
 
     while (1) {
         struct message msg;
+        strcpy(msg.name, DEFAULT_NAME);
 
         // Read user input from STDIN
         if (fgets(msg.text, sizeof(msg.text), stdin) == NULL) {
@@ -85,7 +88,7 @@ int main() {
             continue;
         }
 
-        printf("sent: %s", msg.text);
+        printf("sent: %s: %s", msg.name, msg.text);
 
         free(send_buf);
         send_buf = NULL;
@@ -110,7 +113,7 @@ int main() {
             continue;
         }
 
-        printf("received: %s", reply.text);
+        printf("received: %s: %s", msg.name, reply.text);
 
         free(recv_buf);
         recv_buf = NULL;
