@@ -81,7 +81,7 @@ int main() {
     while (1) {
         // Receive messsage from client
         char *buf;
-        ssize_t recvd = recvall(sockfd, &buf, 0);
+        ssize_t recvd = recvall(sockfd, &buf);
         if (recvd == -1) {
             perror("receive error");
             continue;
@@ -92,32 +92,13 @@ int main() {
 
         printf("received message\n");
 
-        // Deserialize message
-        struct message msg;
-        if (deserialize(buf, &msg) != 0) {
-            perror("deserialization error");
-            continue;
-        }
-
-        printf("deserialized message: %s", msg.text);
-
-        // Serialize message
-        free(buf);
-        size_t len;
-        if (serialize(&msg, &buf, &len) != 0) {
-            perror("serialization error");
-            continue;
-        }
-
-        printf("serialized message\n");
-
-        // Send reply to client
-        if (sendall(sockfd, buf, len, 0) == -1) {
+        // Repeat message back to client
+        if (sendall(sockfd, buf, recvd) == -1) {
             perror("send error");
             continue;
         }
 
-        printf("sent: %s", msg.text);
+        printf("sent message back\n");
 
         free(buf);
     }

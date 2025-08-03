@@ -79,7 +79,7 @@ int main() {
         printf("serialized message\n");
 
         // Send message to server
-        if (sendall(sockfd, send_buf, len, 0) == -1) {
+        if (sendall(sockfd, send_buf, len) == -1) {
             perror("send error");
             continue;
         }
@@ -90,7 +90,7 @@ int main() {
 
         // Receive reply from server
         char *recv_buf;
-        ssize_t recvd = recvall(sockfd, &recv_buf, 0);
+        ssize_t recvd = recvall(sockfd, &recv_buf);
         if (recvd == -1) {
             perror("receive error");
             continue;
@@ -108,7 +108,7 @@ int main() {
             continue;
         }
 
-        printf("deserialized message: %s", reply.text);
+        printf("received: %s", reply.text);
 
         free(recv_buf);
     }

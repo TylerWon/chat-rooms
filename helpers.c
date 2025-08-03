@@ -17,11 +17,11 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
-ssize_t sendall(int sockfd, char *buf, size_t n, int flags) {
+ssize_t sendall(int sockfd, char *buf, size_t len) {
     ssize_t sent = 0;
     size_t total_sent = 0;
-    while (total_sent < n) {
-        sent = send(sockfd, buf+total_sent, n-total_sent, flags);
+    while (total_sent < len) {
+        sent = send(sockfd, buf+total_sent, len-total_sent, SEND_FLAGS);
         if (sent == -1) {
             return sent;
         }
@@ -31,10 +31,10 @@ ssize_t sendall(int sockfd, char *buf, size_t n, int flags) {
     return total_sent;
 }
 
-ssize_t recvall(int sockfd, char **buf, int flags) {
+ssize_t recvall(int sockfd, char **buf) {
     // Get message length with first receive
     char *msg = malloc(MSG_LEN_SIZE);
-    ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, flags);
+    ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, RECV_FLAGS);
     if (recvd <= 0) {
         return recvd;
     }
@@ -44,7 +44,7 @@ ssize_t recvall(int sockfd, char **buf, int flags) {
     msg = realloc(msg, msg_len);
     size_t total_recvd = recvd;
     while (total_recvd < msg_len) {
-        recvd = recv(sockfd, msg+total_recvd, msg_len-total_recvd, flags);
+        recvd = recv(sockfd, msg+total_recvd, msg_len-total_recvd, RECV_FLAGS);
         if (recvd <= 0) {
             return recvd;
         }
