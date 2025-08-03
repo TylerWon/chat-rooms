@@ -20,6 +20,7 @@ void *get_in_addr(struct sockaddr *sa) {
 ssize_t sendall(int sockfd, char *buf, size_t len) {
     ssize_t sent = 0;
     size_t total_sent = 0;
+
     while (total_sent < len) {
         sent = send(sockfd, buf+total_sent, len-total_sent, SEND_FLAGS);
         if (sent == -1) {
@@ -34,14 +35,23 @@ ssize_t sendall(int sockfd, char *buf, size_t len) {
 ssize_t recvall(int sockfd, char **buf) {
     // Get message length with first receive
     char *msg = malloc(MSG_LEN_SIZE);
+    if (msg == NULL) {
+        return -1;
+    }
+
     ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, RECV_FLAGS);
     if (recvd <= 0) {
         return recvd;
     }
+
     MSG_LEN msg_len = ntohl(*((MSG_LEN *) msg));
 
     // Get rest of message with remaining receives
     msg = realloc(msg, msg_len);
+    if (msg == NULL) {
+        return -1;
+    }
+
     size_t total_recvd = recvd;
     while (total_recvd < msg_len) {
         recvd = recv(sockfd, msg+total_recvd, msg_len-total_recvd, RECV_FLAGS);
@@ -57,13 +67,22 @@ ssize_t recvall(int sockfd, char **buf) {
 }
 
 int serialize(struct message *msg, char **buf, size_t *len) {
+    if (msg == NULL || buf == NULL || len == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
     // Determine message length
     size_t name_len = strlen(msg->name) + 1;   // +1 for null character
     size_t text_len = strlen(msg->text) + 1;   // +1 for null character
     size_t msg_len = MSG_LEN_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;
     
-    *len = msg_len;
     char *b = malloc(msg_len);  // Use b so we don't have to dereference *buf every time to get a single pointer
+    if (b == NULL) {
+        return -1;
+    }
+
+    *len = msg_len;
     *buf = b;
 
     // Write message length
@@ -91,6 +110,11 @@ int serialize(struct message *msg, char **buf, size_t *len) {
 }
 
 int deserialize(char *buf, struct message *msg) {
+    if (buf == NULL || msg == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
     // Skip over message length
     buf += MSG_LEN_SIZE;
 
