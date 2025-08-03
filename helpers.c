@@ -62,21 +62,21 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     size_t msg_len = MSG_LEN_SIZE + TEXT_LEN_SIZE + text_size;
     
     *len = msg_len;
-    char *p = malloc(msg_len);
-    *buf = p;
+    char *b = malloc(msg_len);  // Use b so we don't have to dereference *buf every time to get a single pointer
+    *buf = b;
 
     // Write message length
     msg_len = htonl(msg_len);
-    memcpy(p, &msg_len, MSG_LEN_SIZE);
-    p += MSG_LEN_SIZE;
+    memcpy(b, &msg_len, MSG_LEN_SIZE);
+    b += MSG_LEN_SIZE;
 
     // Write text length
     uint16_t text_len = htons(text_size);
-    memcpy(p, &text_len, TEXT_LEN_SIZE);
-    p += TEXT_LEN_SIZE;
+    memcpy(b, &text_len, TEXT_LEN_SIZE);
+    b += TEXT_LEN_SIZE;
 
     // Write text
-    memcpy(p, msg->text, text_size);
+    memcpy(b, msg->text, text_size);
 
     return 0;
 }
