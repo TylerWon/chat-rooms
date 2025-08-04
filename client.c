@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "helpers.h"
@@ -35,7 +36,7 @@ void execute_command(char *str, char *name) {
     }
     
     if (strcmp(command, "name") == 0) {
-        char new_name[NAME_SIZE];
+        char new_name[NAME_SIZE_LIMIT];
         if (sscanf(str, "/%5s %100s", command, new_name) != 2) {
             printf("name not provided\n");
             return;
@@ -111,6 +112,9 @@ int main() {
             execute_command(msg.text, msg.name);
             continue;
         }
+
+        // Set timestamp
+        time(&msg.timestamp);
         
         // Serialize message
         char *send_buf;
@@ -128,7 +132,12 @@ int main() {
             continue;
         }
 
-        printf("sent: %s: %s", msg.name, msg.text);
+        struct tm *sent_timestamp = localtime(&msg.timestamp);
+        if (sent_timestamp == NULL) {
+            perror("failed to convert to timestamp to local time");
+            continue;
+        }
+        printf("sent: (%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg.name, msg.text);
 
         free(send_buf);
         send_buf = NULL;
@@ -153,7 +162,12 @@ int main() {
             continue;
         }
 
-        printf("received: %s: %s", msg.name, reply.text);
+        struct tm *recv_timestamp = localtime(&msg.timestamp);
+        if (recv_timestamp == NULL) {
+            perror("failed to convert to timestamp to local time");
+            continue;
+        }
+        printf("sent: (%02d:%02d) %s: %s", recv_timestamp->tm_hour, recv_timestamp->tm_min, msg.name, msg.text);
 
         free(recv_buf);
         recv_buf = NULL;
