@@ -11,6 +11,33 @@
 #include "helpers.h"
 
 #define DEFAULT_NAME "anonymous"
+#define COMMAND_SIZE 5
+
+/**
+ * Executes the command in str if it is a valid command.
+ * 
+ * Commands:
+ * - /name [name] - Sets the user's name to [name]
+ */
+void execute_command(char *str, char *name) {
+    char command[COMMAND_SIZE];
+    if (sscanf(str, "/%5s", command) != 1) {
+        printf("command not provided\n");
+        return;
+    }
+    
+    if (strcmp(command, "name") == 0) {
+        char new_name[NAME_SIZE];
+        if (sscanf(str, "/%5s %100s", command, new_name) != 2) {
+            printf("name not provided\n");
+            return;
+        }
+        memcpy(name, new_name, strlen(new_name) + 1);
+        printf("set name to %s\n", name);
+    } else {
+        printf("not a valid command\n");
+    }
+}
 
 int main() {
     // Get address info for my IP, port 4000
@@ -58,10 +85,9 @@ int main() {
     freeaddrinfo(res);
     res = NULL;
 
+    struct message msg;
+    strcpy(msg.name, DEFAULT_NAME);
     while (1) {
-        struct message msg;
-        strcpy(msg.name, DEFAULT_NAME);
-
         // Read user input from STDIN
         if (fgets(msg.text, sizeof(msg.text), stdin) == NULL) {
             perror("failed to read user input");
@@ -71,6 +97,12 @@ int main() {
         clear_previous_line();
 
         printf("read input\n");
+
+        // Execute command if input is a command
+        if (strncmp(msg.text, "/", 1) == 0) {
+            execute_command(msg.text, msg.name);
+            continue;
+        }
         
         // Serialize message
         char *send_buf;
