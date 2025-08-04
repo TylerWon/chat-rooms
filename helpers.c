@@ -135,8 +135,3 @@ int deserialize(char *buf, struct message *msg) {
 
     return 0;
 }
-
-void clear_previous_line() {
-    printf("\033[A");   // Move cursor up one line
-    printf("\033[2K");  // Clear the entire line
-}

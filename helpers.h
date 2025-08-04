@@ -58,8 +58,3 @@ int serialize(struct message *msg, char **buf, size_t *len);
  * indicate the error.
  */
 int deserialize(char *buf, struct message *msg);
-
-/**
- * Clears previous line from terminal.
- */
-void clear_previous_line();

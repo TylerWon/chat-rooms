@@ -14,6 +14,14 @@
 #define COMMAND_SIZE 5
 
 /**
+ * Clears previous line from terminal.
+ */
+void clear_previous_line() {
+    printf("\033[A");   // Move cursor up one line
+    printf("\033[2K");  // Clear the entire line
+}
+
+/**
  * Executes the command in str if it is a valid command.
  * 
  * Commands:
