@@ -9,7 +9,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "helpers.h"
+#include "message.h"
+#include "net_utils.h"
 
 #define DEFAULT_NAME "anonymous"
 #define COMMAND_SIZE 5

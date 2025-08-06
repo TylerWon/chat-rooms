@@ -1,18 +1,26 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
-DEPS = helpers.h
-OBJ = helpers.o
 
-all: server client
+# Header files
+DEPS = message.h net_utils.h
 
+# Object files
+OBJS_COMMON = net_utils.o
+OBJS_CLIENT = client.o message.o $(OBJS_COMMON)
+OBJS_SERVER = server.o $(OBJS_COMMON)
+
+# Default target
+all: client server
+
+# Pattern rule for building .o files from .c files
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-server: server.o $(OBJ)
+client: $(OBJS_CLIENT)
 	$(CC) $(CFLAGS) -o $@ $^
 
-client: client.o $(OBJ)
+server: $(OBJS_SERVER)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f *.o server client
+	rm -f *.o client server
