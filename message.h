@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 typedef uint32_t MSG_LEN;
 typedef int64_t TIMESTAMP;
 typedef uint8_t NAME_LEN;
