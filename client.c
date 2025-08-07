@@ -28,6 +28,7 @@ void clear_previous_line() {
  * 
  * Commands:
  * - /name [name] - Sets the user's name to [name]
+ * - /exit - Exits the application
  */
 void execute_command(char *str, char *name) {
     char command[COMMAND_SIZE];
@@ -44,6 +45,8 @@ void execute_command(char *str, char *name) {
         }
         memcpy(name, new_name, strlen(new_name) + 1);
         printf("set name to %s\n", name);
+    } else if (strcmp(command, "exit") == 0) {
+        exit(EXIT_SUCCESS);
     } else {
         printf("not a valid command\n");
     }
