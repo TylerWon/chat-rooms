@@ -1,7 +1,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "message.h"
 
@@ -84,4 +86,15 @@ int deserialize(char *buf, struct message *msg) {
     memcpy(msg->text, buf, text_len);
 
     return 0;
+}
+
+void print_message(struct message *msg) {
+    struct tm *sent_timestamp = localtime(&msg->timestamp);
+
+    if (sent_timestamp == NULL) {
+        perror("failed to convert UTC timestamp to local time");
+        return;
+    }
+    
+    printf("(%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg->name, msg->text);
 }

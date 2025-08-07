@@ -50,3 +50,10 @@ int serialize(struct message *msg, char **buf, size_t *len);
  * indicate the error.
  */
 int deserialize(char *buf, struct message *msg);
+
+/**
+ * Prints a message in the format: (hh:mm) [name]: [message].
+ * 
+ * Example: (09:00) Tyler: Hello, world!
+ */
+void print_message(struct message *msg);

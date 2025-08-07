@@ -52,21 +52,29 @@ void execute_command(char *str, char *name) {
     }
 }
 
-int main() {
-    // Get address info for my IP, port 4000
-    int status;
-    struct addrinfo hints, *res;
+/**
+ * Gets the address info of the server for the given port. The server runs on the same host as the client so the IP 
+ * address will be the loopback address (i.e. 127.0.0.1 or ::1).
+ * 
+ * On success, returns 1 and stores the address info in *res which is a linked list of struct addrinfos. Otherwise, 
+ * returns a non-zero error code (same codes as getaddrinfo()).
+ */
+int get_server_addr_info(char *port, struct addrinfo **res) {
+    struct addrinfo hints;
     
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;        // Allow IPv4 or IPv6
     hints.ai_socktype = SOCK_STREAM;    // Stream socket
-    hints.ai_flags = AI_PASSIVE;        // Get my IP
 
-    if ((status = getaddrinfo(NULL, PORT, &hints, &res)) != 0) {
-        printf("getaddrinfo error: %s\n", gai_strerror(status));
-        exit(EXIT_FAILURE);
-    }
+    return getaddrinfo(NULL, port, &hints, res); // Set node parameter to NULL to have loopback address returned
+}
 
+/**
+ * Creates a socket which is connected to the address provided in res (a linked list of struct addrinfos).
+ * 
+ * On success, returns the socket file descriptor. Otherwise, returns -1.
+ */
+int create_socket(struct addrinfo *res) {
     struct addrinfo *p;
     int sockfd;
     for (p = res; p != NULL; p = p->ai_next) {
@@ -87,11 +95,23 @@ int main() {
         inet_ntop(p->ai_family, get_in_addr(p->ai_addr), ip, sizeof(ip));
         printf("connected to: %s, port %s\n", ip, PORT);
 
-        break;
+        return sockfd;
     }
 
-    if (p == NULL) {
-        printf("socket could not be created\n");
+    return -1;
+}
+
+int main() {
+    int status;
+    struct addrinfo *res;
+    if ((status = get_server_addr_info(PORT, &res)) != 0) {
+        printf("failed to get server's address info: %s\n", gai_strerror(status));
+        exit(EXIT_FAILURE);
+    }
+
+    int sockfd;
+    if ((sockfd = create_socket(res)) == -1) {
+        printf("failed to create socket\n");
         exit(EXIT_FAILURE);
     }
 
@@ -106,7 +126,6 @@ int main() {
             perror("failed to read user input");
             continue;
         }
-
         clear_previous_line();
 
         printf("read input\n");
@@ -136,12 +155,7 @@ int main() {
             continue;
         }
 
-        struct tm *sent_timestamp = localtime(&msg.timestamp);
-        if (sent_timestamp == NULL) {
-            perror("failed to convert to timestamp to local time");
-            continue;
-        }
-        printf("sent: (%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg.name, msg.text);
+        printf("sent message\n");
 
         free(send_buf);
         send_buf = NULL;
@@ -166,12 +180,7 @@ int main() {
             continue;
         }
 
-        struct tm *recv_timestamp = localtime(&msg.timestamp);
-        if (recv_timestamp == NULL) {
-            perror("failed to convert to timestamp to local time");
-            continue;
-        }
-        printf("sent: (%02d:%02d) %s: %s", recv_timestamp->tm_hour, recv_timestamp->tm_min, msg.name, msg.text);
+        print_message(&reply);
 
         free(recv_buf);
         recv_buf = NULL;

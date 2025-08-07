@@ -11,49 +11,71 @@
 
 #define BACKLOG_LIMIT 10
 
-int main() {
-    // Get address info for my IP, port 4000
-    int status;
-    struct addrinfo hints, *res;
+/**
+ * Gets the address info of the server for the given port. The IP address will be the wildcard address so connections
+ * can be accpeted on any of the host's network addresses.
+ * 
+ * On success, returns 1 and stores the address info in *res which is a linked list of struct addrinfos. Otherwise, 
+ * returns a non-zero error code (same codes as getaddrinfo()).
+ */
+int get_server_addr_info(char *port, struct addrinfo **res) {
+    struct addrinfo hints;
     
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;        // Allow IPv4 or IPv6
     hints.ai_socktype = SOCK_STREAM;    // Stream socket
-    hints.ai_flags = AI_PASSIVE;        // Get my IP
+    hints.ai_flags = AI_PASSIVE;        // Setting this and the node parameter to NULL makes the wildcard address be returned
 
-    if ((status = getaddrinfo(NULL, PORT, &hints, &res)) != 0) {
-        printf("getaddrinfo error: %s\n", gai_strerror(status));
-        exit(EXIT_FAILURE);
-    }
+    return getaddrinfo(NULL, port, &hints, res); 
+}
 
+/**
+ * Creates a socket for listening to incoming connections on the address provided in res (a linked list of struct 
+ * addrinfos).
+ * 
+ * On success, returns the socket file descriptor. Otherwise, returns -1. 
+ */
+int create_listener_socket(struct addrinfo *res) {
     struct addrinfo *p;
-    int listener;
+    int sockfd;
     for (p = res; p != NULL; p = p->ai_next) {
         // Create socket from address info
-        if ((listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
             perror("socket error");
             continue;
         }
 
         // Allow socket to reuse an address if it's already in use
         int yes = 1;
-        if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
             perror("setsockopt error");
-            exit(EXIT_FAILURE);
+            return -1;
         }
         
         // Bind socket to address (my IP, port 4000)
-        if (bind(listener, p->ai_addr, p->ai_addrlen) == -1) {
+        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
             perror("bind error");
-            close(listener);
+            close(sockfd);
             continue;
         }
 
-        break;
+        return sockfd;
     }
 
-    if (p == NULL) {
-        printf("socket could not be created\n");
+    return -1;
+}
+
+int main() {
+    int status;
+    struct addrinfo *res;
+    if ((status = get_server_addr_info(PORT, &res)) != 0) {
+        printf("failed to get server's address info: %s\n", gai_strerror(status));
+        exit(EXIT_FAILURE);
+    }
+
+    int listener;
+    if ((listener = create_listener_socket(res)) == -1) {
+        printf("failed to create listener socket\n");
         exit(EXIT_FAILURE);
     }
 
