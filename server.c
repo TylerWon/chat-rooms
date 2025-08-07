@@ -88,8 +88,6 @@ int main() {
             continue;
         } else if (recvd == 0) {
             printf("connection closed\n");
-            free(buf);
-            buf = NULL;
             exit(EXIT_SUCCESS);
         }
 

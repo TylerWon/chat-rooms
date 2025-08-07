@@ -38,6 +38,7 @@ ssize_t recvall(int sockfd, char **buf) {
 
     ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, RECV_FLAGS);
     if (recvd <= 0) {
+        free(msg);
         return recvd;
     }
 
@@ -53,6 +54,7 @@ ssize_t recvall(int sockfd, char **buf) {
     while (total_recvd < msg_len) {
         recvd = recv(sockfd, msg+total_recvd, msg_len-total_recvd, RECV_FLAGS);
         if (recvd <= 0) {
+            free(msg);
             return recvd;
         }
         total_recvd += recvd;
