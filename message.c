@@ -12,9 +12,9 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     }
 
     // Determine message length
-    size_t name_len = strlen(msg->name) + 1; // +1 for null character
-    size_t text_len = strlen(msg->text) + 1; // +1 for null character
-    size_t msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;
+    NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
+    TEXT_LEN text_len = strlen(msg->text) + 1; // +1 for null character
+    MSG_LEN msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;
     
     char *b = malloc(msg_len); // Use b so we don't have to dereference *buf every time to get a single pointer
     if (b == NULL) {
