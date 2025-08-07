@@ -14,15 +14,16 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     // Determine message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
     TEXT_LEN text_len = strlen(msg->text) + 1; // +1 for null character
-    MSG_LEN msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;
-    
-    char *b = malloc(msg_len); // Use b so we don't have to dereference *buf every time to get a single pointer
-    if (b == NULL) {
+    MSG_LEN msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;    
+    *len = msg_len;
+
+    // Allocate msg_len space for the buffer
+    *buf = malloc(msg_len); 
+    if (*buf == NULL) {
         return -1;
     }
 
-    *len = msg_len;
-    *buf = b;
+    char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
     // Write message length
     MSG_LEN msg_len_nbe = htonl(msg_len);
