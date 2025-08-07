@@ -64,7 +64,7 @@ int main() {
 
     if ((status = getaddrinfo(NULL, PORT, &hints, &res)) != 0) {
         printf("getaddrinfo error: %s\n", gai_strerror(status));
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     struct addrinfo *p;
@@ -80,7 +80,7 @@ int main() {
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) != 0) {
             perror("connect error");
             close(sockfd);
-            return 1;
+            continue;
         }
 
         char ip[INET6_ADDRSTRLEN];
@@ -92,7 +92,7 @@ int main() {
 
     if (p == NULL) {
         printf("socket could not be created\n");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     freeaddrinfo(res);
@@ -154,7 +154,7 @@ int main() {
             continue;
         } else if (recvd == 0) {
             printf("connection closed\n");
-            return 1;
+            exit(EXIT_FAILURE);
         }
 
         printf("received message\n");
@@ -177,5 +177,5 @@ int main() {
         recv_buf = NULL;
     }
 
-    return 0;
+    exit(EXIT_SUCCESS);
 }

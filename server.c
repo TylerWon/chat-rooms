@@ -23,7 +23,7 @@ int main() {
 
     if ((status = getaddrinfo(NULL, PORT, &hints, &res)) != 0) {
         printf("getaddrinfo error: %s\n", gai_strerror(status));
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     struct addrinfo *p;
@@ -39,7 +39,7 @@ int main() {
         int yes = 1;
         if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
             perror("setsockopt error");
-            return 1;
+            exit(EXIT_FAILURE);
         }
         
         // Bind socket to address (my IP, port 4000)
@@ -54,7 +54,7 @@ int main() {
 
     if (p == NULL) {
         printf("socket could not be created\n");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     freeaddrinfo(res);
@@ -63,7 +63,7 @@ int main() {
     // Set-up socket to listen for incoming connections
     if (listen(listener, BACKLOG_LIMIT) == -1) {
         perror("listen error");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     // Accept connection
@@ -72,7 +72,7 @@ int main() {
     int sockfd;
     if ((sockfd = accept(listener, &client_addr, &client_addr_size)) == -1) {
         perror("accept error");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     char ip[INET6_ADDRSTRLEN];
@@ -88,7 +88,9 @@ int main() {
             continue;
         } else if (recvd == 0) {
             printf("connection closed\n");
-            return 1;
+            free(buf);
+            buf = NULL;
+            exit(EXIT_SUCCESS);
         }
 
         printf("received message\n");
@@ -105,5 +107,5 @@ int main() {
         buf = NULL;
     }
 
-    return 0;
+    exit(EXIT_SUCCESS);
 }
