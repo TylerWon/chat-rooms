@@ -10,7 +10,7 @@
 int get_server_addr_info(char *port, struct addrinfo **res); 
 
 /**
- * Creates a socket for listening to incoming connections on the address provided in res (a linked list of struct 
+ * Creates a socket for listening to incoming connections to the address provided in res (a linked list of struct 
  * addrinfos).
  * 
  * On success, returns the socket file descriptor. Otherwise, returns -1. 

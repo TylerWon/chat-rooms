@@ -4,7 +4,8 @@
 #define RECV_FLAGS 0
 
 /** 
- * Get struct in_addr/in6_addr from a struct sockaddr. Use the sa_family field to determine if it's IPv4 or IPv6.
+ * Returns a pointer to a struct in_addr/in6_addr from a struct sockaddr. Uses the sa_family field to determine if the
+ * struct sockaddr represents a IPv4 or IPv6 address so the correct type can be returned.
  */ 
 void *get_in_addr(struct sockaddr *sa);
 
