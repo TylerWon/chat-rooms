@@ -69,7 +69,7 @@ int create_socket(struct addrinfo *res) {
         }
 
         char ip[INET6_ADDRSTRLEN];
-        inet_ntop(p->ai_family, get_ip_address(p->ai_addr), ip, sizeof(ip));
+        get_ip_address(p->ai_addr, ip, sizeof(ip));
         printf("connected to: %s, port %d\n", ip, get_port(p->ai_addr));
 
         return sockfd;

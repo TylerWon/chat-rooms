@@ -85,7 +85,7 @@ int main() {
     }
 
     char ip[INET6_ADDRSTRLEN];
-    inet_ntop(client_addr.sa_family, get_ip_address(&client_addr), ip, sizeof(ip));
+    get_ip_address(&client_addr, ip, sizeof(ip));
     printf("connection from: %s, port %d\n", ip, get_port(&client_addr));
 
     while (1) {

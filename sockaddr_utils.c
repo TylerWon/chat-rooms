@@ -2,14 +2,18 @@
 
 #include "sockaddr_utils.h"
 
-void *get_ip_address(struct sockaddr *sa) {
-    // IPv4 address so cast to sockaddr_in
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in *) sa)->sin_addr.s_addr);
-    }    
+void get_ip_address(struct sockaddr *sa, char *buf, size_t n) {
+    void *ip;
 
-    // IPv6 address so cast to sockaddr_in6
-    return &(((struct sockaddr_in6 *) sa)->sin6_addr.s6_addr);
+    if (sa->sa_family == AF_INET) {
+        // IPv4 address so cast to sockaddr to sockaddr_in
+        ip = &(((struct sockaddr_in *) sa)->sin_addr);
+    } else {
+        // IPv6 address so cast sockaddr to sockaddr_in6
+        ip = &(((struct sockaddr_in6 *) sa)->sin6_addr);
+    }  
+
+    inet_ntop(sa->sa_family, ip, buf, n);
 }
 
 
