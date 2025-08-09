@@ -28,20 +28,20 @@ int create_listener_socket(struct addrinfo *res) {
     for (p = res; p != NULL; p = p->ai_next) {
         // Create socket from address info
         if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
-            perror("socket error");
+            perror("failed to create listener socket");
             continue;
         }
 
         // Allow socket to reuse an address if it's already in use
         int yes = 1;
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-            perror("setsockopt error");
+            perror("error occurred while attempting to allow listener socket to resuse addresses");
             return -1;
         }
         
         // Bind socket to address (my IP, port 4000)
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            perror("bind error");
+            perror("failed to bind listener socket");
             close(sockfd);
             continue;
         }
@@ -71,7 +71,7 @@ int main() {
 
     // Set-up socket to listen for incoming connections
     if (listen(listener, BACKLOG_LIMIT) == -1) {
-        perror("listen error");
+        perror("error while preparing listener socket to accept connections");
         exit(EXIT_FAILURE);
     }
 
@@ -80,7 +80,7 @@ int main() {
     socklen_t client_addr_size = sizeof(client_addr);
     int sockfd;
     if ((sockfd = accept(listener, &client_addr, &client_addr_size)) == -1) {
-        perror("accept error");
+        perror("failed to accept connection");
         exit(EXIT_FAILURE);
     }
 
@@ -93,7 +93,7 @@ int main() {
         char *buf;
         ssize_t recvd = recvall(sockfd, &buf);
         if (recvd == -1) {
-            perror("receive error");
+            printf("failed to receive message\n");
             continue;
         } else if (recvd == 0) {
             printf("connection closed\n");
@@ -104,7 +104,7 @@ int main() {
 
         // Repeat message back to client
         if (sendall(sockfd, buf, recvd) == -1) {
-            perror("send error");
+            printf("failed to send message\n");
             continue;
         }
 

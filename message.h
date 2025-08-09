@@ -29,7 +29,7 @@ struct message {
  * - text (max 1000 bytes) 
  * 
  * On success, returns 0 and *buf will contain the serialized message while len will be its size in bytes. Otherwise,
- * -1 is returned and errno is set to indicate the error.
+ * -1 is returned.
  */
 int serialize(struct message *msg, char **buf, size_t *len);
 
@@ -44,8 +44,7 @@ int serialize(struct message *msg, char **buf, size_t *len);
  * - text length (2 bytes)
  * - text (max 1000 bytes) 
  * 
- * On success, returns 0 and msg will contain the deserialized message. Otherwise, -1 is returned and errno is set to 
- * indicate the error.
+ * On success, returns 0 and msg will contain the deserialized message. Otherwise, -1 is returned.
  */
 int deserialize(char *buf, struct message *msg);
 

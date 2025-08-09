@@ -9,7 +9,7 @@
 
 int serialize(struct message *msg, char **buf, size_t *len) {
     if (msg == NULL || buf == NULL || len == NULL) {
-        errno = EINVAL;
+        printf("invalid argument(s)");
         return -1;
     }
 
@@ -22,6 +22,7 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     // Allocate msg_len space for the buffer
     *buf = malloc(msg_len); 
     if (*buf == NULL) {
+        printf("failed to allocate space for buffer\n");
         return -1;
     }
 
@@ -58,7 +59,7 @@ int serialize(struct message *msg, char **buf, size_t *len) {
 
 int deserialize(char *buf, struct message *msg) {
     if (buf == NULL || msg == NULL) {
-        errno = EINVAL;
+        printf("invalid argument(s)");
         return -1;
     }
 
@@ -90,11 +91,5 @@ int deserialize(char *buf, struct message *msg) {
 
 void print_message(struct message *msg) {
     struct tm *sent_timestamp = localtime(&msg->timestamp);
-
-    if (sent_timestamp == NULL) {
-        perror("failed to convert UTC timestamp to local time");
-        return;
-    }
-    
     printf("(%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg->name, msg->text);
 }
