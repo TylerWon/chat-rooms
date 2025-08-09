@@ -9,6 +9,7 @@
 
 #include "net_utils.h"
 #include "server.h"
+#include "sockaddr_utils.h"
 
 int get_server_addr_info(char *port, struct addrinfo **res) {
     struct addrinfo hints;

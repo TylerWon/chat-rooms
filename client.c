@@ -12,6 +12,7 @@
 #include "client.h"
 #include "message.h"
 #include "net_utils.h"
+#include "sockaddr_utils.h"
 
 void clear_previous_line() {
     printf("\033[A");   // Move cursor up one line
