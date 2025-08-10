@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -30,10 +31,14 @@ ssize_t recvall(int sockfd, char **buf) {
     }
 
     ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, RECV_FLAGS);
-    if (recvd <= 0) {
+    if ((recvd == -1 && errno == ECONNRESET) || recvd == 0) { // 0 = graceful close, -1 with ECONNRESET = abrupt close
+        printf("connection to socket %d closed\n", sockfd);
+        free(msg);
+        return 0;
+    } else if (recvd == -1) {
         perror("error occurred while receiving message length");
         free(msg);
-        return recvd;
+        return -1;
     }
 
     MSG_LEN msg_len = ntohl(*((MSG_LEN *) msg));
@@ -48,10 +53,14 @@ ssize_t recvall(int sockfd, char **buf) {
     size_t total_recvd = recvd;
     while (total_recvd < msg_len) {
         recvd = recv(sockfd, msg+total_recvd, msg_len-total_recvd, RECV_FLAGS);
-        if (recvd <= 0) {
-            perror("error occurred while receiving message");
+        if ((recvd == -1 && errno == ECONNRESET) || recvd == 0) {
+            printf("connection to socket %d closed\n", sockfd);
             free(msg);
-            return recvd;
+            return 0;
+        } else if (recvd == -1) {
+            perror("error occurred while receiving message length");
+            free(msg);
+            return -1;
         }
         total_recvd += recvd;
     }
