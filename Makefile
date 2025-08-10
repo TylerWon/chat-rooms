@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 
 # Header files
-DEPS = client.h message.h net_utils.h pollfds.h server.h sockaddr_utils.h
+DEPS = message.h net_utils.h pollfds.h sockaddr_utils.h
 
 # Object files
 OBJS_COMMON = net_utils.o sockaddr_utils.o

@@ -12,7 +12,7 @@ nfds_t pollfds_cap;
  *
  * On success, returns 1. Returns -1 on error and sets errno to indicate the error.
  */
-int _pollfds_resize(nfds_t new_cap)
+int pollfds_resize(nfds_t new_cap)
 {
     struct pollfd *p = reallocarray(pollfds, new_cap, sizeof(struct pollfd));
     if (p == NULL)
@@ -39,7 +39,7 @@ int pollfds_init()
 int pollfds_append(int fd, short events)
 {
     if (pollfds_n + 1 > pollfds_cap)
-        if (_pollfds_resize(2 * pollfds_cap) != 0)
+        if (pollfds_resize(2 * pollfds_cap) != 0)
         {
             perror("failed to resize pollfds");
             return -1;
@@ -64,6 +64,6 @@ void pollfds_delete(int i)
 
     if (pollfds_n <= pollfds_cap / 2 && pollfds_cap / 2 >= FDS_INITIAL_CAPACITY)
     {
-        _pollfds_resize(pollfds_cap / 2); // No need to return error if resize fails because pollfds is still valid
+        pollfds_resize(pollfds_cap / 2); // No need to return error if resize fails because pollfds is still valid
     }
 }

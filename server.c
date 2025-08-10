@@ -10,11 +10,19 @@
 
 #include "net_utils.h"
 #include "pollfds.h"
-#include "server.h"
 #include "sockaddr_utils.h"
+
+#define BACKLOG_LIMIT 10
 
 int listener;
 
+/**
+ * Gets the address info of the server for the given port. The IP address will be the wildcard address so connections
+ * can be accpeted on any of the host's network addresses.
+ *
+ * On success, returns 1 and stores the address info in *res which is a linked list of struct addrinfos. Otherwise,
+ * returns a non-zero error code (same codes as getaddrinfo()).
+ */
 int get_server_addr_info(char *port, struct addrinfo **res)
 {
     struct addrinfo hints;
@@ -27,6 +35,12 @@ int get_server_addr_info(char *port, struct addrinfo **res)
     return getaddrinfo(NULL, port, &hints, res);
 }
 
+/**
+ * Creates a socket for listening to incoming connections to the address provided in res (a linked list of struct
+ * addrinfos).
+ *
+ * On success, returns the socket file descriptor. Otherwise, returns -1.
+ */
 int create_listener_socket(struct addrinfo *res)
 {
     struct addrinfo *p;
@@ -59,6 +73,11 @@ int create_listener_socket(struct addrinfo *res)
     return -1;
 }
 
+/**
+ * Accepts an incoming connection on the listening socket.
+ *
+ * On success, returns 0. Returns -1 if there is an error and sets errno to indicate the error.
+ */
 int accept_connection()
 {
     struct sockaddr client_addr;
@@ -74,6 +93,11 @@ int accept_connection()
     return sockfd;
 }
 
+/**
+ * Accepts a new connection and appends the resulting socket file descriptor to pollfds so it can be monitored.
+ *
+ * On success, returns 0. Otherwise, returns -1.
+ */
 int create_connection()
 {
     int sockfd;
@@ -93,6 +117,11 @@ int create_connection()
     return 0;
 }
 
+/**
+ * Receives data from the socket sender and sends it to all other sockets (except for the listener socket).
+ *
+ * On success, returns 0. Returns -1 if there is an error.
+ */
 int handle_data(int sender)
 {
     char *buf;
@@ -129,6 +158,9 @@ int handle_data(int sender)
     return 0;
 }
 
+/**
+ * Closes the connection to socket sockfd and removes it from pollfds at index i.
+ */
 void close_connection(int sockfd, int i)
 {
     close(sockfd);
