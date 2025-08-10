@@ -9,7 +9,7 @@ extern nfds_t pollfds_cap; // Number of elements that fds can hold (capacity)
 /**
  * Initializes an array of struct pollfds (pollfds) to be used with the poll() function.
  *
- * On success, returns 0. Otherwise, returns -1
+ * On success, returns 0. Returns -1 if there is an error and sets errno to indicate the error.
  */
 int pollfds_init();
 
@@ -24,6 +24,6 @@ int pollfds_append(int fd, short events);
 /**
  * Deletes the struct pollfd at index i in pollfds by replacing it with the last struct in the array. If at least half
  * of pollfds is empty after the removal, halves its size unless this would cause its capacity to be less than
- * FDS_INITIAL_CAPACITY. Since resizing isn't necessary, no error is returned if it fails.
+ * FDS_INITIAL_CAPACITY.
  */
 void pollfds_delete(int i);

@@ -10,10 +10,7 @@
 int serialize(struct message *msg, char **buf, size_t *len)
 {
     if (msg == NULL || buf == NULL || len == NULL)
-    {
-        printf("invalid argument(s)");
         return -1;
-    }
 
     // Determine message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
@@ -24,10 +21,7 @@ int serialize(struct message *msg, char **buf, size_t *len)
     // Allocate msg_len space for the buffer
     *buf = malloc(msg_len);
     if (*buf == NULL)
-    {
-        printf("failed to allocate space for buffer\n");
         return -1;
-    }
 
     char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
@@ -63,10 +57,7 @@ int serialize(struct message *msg, char **buf, size_t *len)
 int deserialize(char *buf, struct message *msg)
 {
     if (buf == NULL || msg == NULL)
-    {
-        printf("invalid argument(s)");
         return -1;
-    }
 
     // Skip over message length
     buf += MSG_LEN_SIZE;

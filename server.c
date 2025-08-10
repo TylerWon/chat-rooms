@@ -65,10 +65,7 @@ int accept_connection()
     socklen_t client_addr_size = sizeof(client_addr);
     int sockfd;
     if ((sockfd = accept(listener, &client_addr, &client_addr_size)) == -1)
-    {
-        perror("error occurred while accepting the connection");
         return -1;
-    }
 
     char ip[INET6_ADDRSTRLEN];
     get_ip_address(&client_addr, ip, sizeof(ip));
@@ -82,7 +79,7 @@ int create_connection()
     int sockfd;
     if ((sockfd = accept_connection()) == -1)
     {
-        printf("failed to accept the connection");
+        perror("failed to accept the connection");
         return -1;
     }
 
@@ -93,8 +90,6 @@ int create_connection()
         return -1;
     }
 
-    printf("created new connection\n");
-
     return 0;
 }
 
@@ -102,15 +97,14 @@ int handle_data(int sender)
 {
     char *buf;
     ssize_t recvd = recvall(sender, &buf);
-    if (recvd == -1)
+    if (recvd <= 0)
     {
-        printf("failed to receive message\n");
+        if (recvd == -1)
+            printf("failed to receive message on socket %d, %s\n", sender, strerror(errno));
+        else
+            printf("connection to socket %d closed\n", sender);
+
         return -1;
-    }
-    else if (recvd == 0)
-    {
-        printf("peer on socket %d terminated the connection\n", sender);
-        return 0;
     }
 
     printf("received message\n");
@@ -120,13 +114,11 @@ int handle_data(int sender)
         int receiver = pollfds[i].fd;
 
         if (receiver == listener)
-        {
             continue;
-        }
 
         if (sendall(receiver, buf, recvd) == -1)
         {
-            printf("failed to send data to socket %d\n", receiver);
+            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
             return -1;
         }
     }
@@ -134,15 +126,13 @@ int handle_data(int sender)
 
     printf("sent message to all open connections\n");
 
-    return 1;
+    return 0;
 }
 
 void close_connection(int sockfd, int i)
 {
     close(sockfd);
     pollfds_delete(i);
-
-    printf("closed connection to socket %d\n", sockfd);
 }
 
 int main()
@@ -169,14 +159,17 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Initialize array for tracking open connections
     if (pollfds_init() != 0)
     {
-        printf("failed to initialize pollfds\n");
+        perror("failed to initialize pollfds");
         exit(EXIT_FAILURE);
     }
 
-    pollfds_append(listener, POLLIN);
+    if (pollfds_append(listener, POLLIN) != 0)
+    {
+        printf("failed to append listener socket to pollfds");
+        exit(EXIT_FAILURE);
+    }
 
     while (1)
     {
@@ -195,6 +188,7 @@ int main()
             if (revents & POLLHUP)
             {
                 close_connection(sockfd, i);
+                printf("closed connection to socket %d\n", sockfd);
                 i--; // repeat same index because last element in pollfds has taken its place
                 continue;
             }
@@ -204,23 +198,17 @@ int main()
                 if (sockfd == listener)
                 {
                     if (create_connection() != 0)
-                    {
                         printf("failed to create new connection\n");
-                    }
+
+                    printf("created new connection\n");
                 }
                 else
                 {
-                    int status;
-                    status = handle_data(sockfd);
-                    if (status == -1)
-                    {
-                        printf("failed to handle data on socket %d\n", sockfd);
-                        exit(EXIT_FAILURE);
-                    }
-                    else if (status == 0)
+                    if (handle_data(sockfd) != 0)
                     {
                         close_connection(sockfd, i);
-                        i--;
+                        printf("closed connection to socket %d\n", sockfd);
+                        i--; // repeat same index because last element in pollfds has taken its place
                     }
                 }
             }

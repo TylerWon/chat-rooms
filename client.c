@@ -141,7 +141,7 @@ int main()
         size_t len;
         if (serialize(&msg, &send_buf, &len) != 0)
         {
-            printf("failed to serialize the message\n");
+            perror("failed to serialize the message");
             continue;
         }
 
@@ -150,7 +150,7 @@ int main()
         // Send message to server
         if (sendall(sockfd, send_buf, len) == -1)
         {
-            printf("failed to send message\n");
+            perror("failed to send message");
             continue;
         }
 
@@ -164,7 +164,7 @@ int main()
         ssize_t recvd = recvall(sockfd, &recv_buf);
         if (recvd == -1)
         {
-            printf("failed to receive message\n");
+            perror("failed to receive message");
             continue;
         }
         else if (recvd == 0)
@@ -179,7 +179,7 @@ int main()
         struct message reply;
         if (deserialize(recv_buf, &reply) != 0)
         {
-            printf("failed to deserialize the message\n");
+            perror("failed to deserialize the message");
             continue;
         }
 

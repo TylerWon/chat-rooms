@@ -10,16 +10,13 @@ nfds_t pollfds_cap;
 /**
  * Resizes pollfds to hold new_cap elements.
  *
- * On success, returns 1. Otherwise, returns -1.
+ * On success, returns 1. Returns -1 on error and sets errno to indicate the error.
  */
 int _pollfds_resize(nfds_t new_cap)
 {
     struct pollfd *p = reallocarray(pollfds, new_cap, sizeof(struct pollfd));
     if (p == NULL)
-    {
-        printf("failed to resize pollfds\n");
         return -1;
-    }
     pollfds = p;
     pollfds_cap = new_cap;
 
@@ -32,10 +29,7 @@ int pollfds_init()
 {
     pollfds = calloc(FDS_INITIAL_CAPACITY, sizeof(struct pollfd));
     if (pollfds == NULL)
-    {
-        printf("failed to allocate space for pollfds\n");
         return -1;
-    }
     pollfds_n = 0;
     pollfds_cap = FDS_INITIAL_CAPACITY;
 
@@ -45,13 +39,11 @@ int pollfds_init()
 int pollfds_append(int fd, short events)
 {
     if (pollfds_n + 1 > pollfds_cap)
-    {
         if (_pollfds_resize(2 * pollfds_cap) != 0)
         {
-            printf("error while resizing pollfds\n");
+            perror("failed to resize pollfds");
             return -1;
         }
-    }
 
     pollfds[pollfds_n].fd = fd;
     pollfds[pollfds_n].events = events;
@@ -72,6 +64,6 @@ void pollfds_delete(int i)
 
     if (pollfds_n <= pollfds_cap / 2 && pollfds_cap / 2 >= FDS_INITIAL_CAPACITY)
     {
-        _pollfds_resize(pollfds_cap / 2);
+        _pollfds_resize(pollfds_cap / 2); // No need to return error if resize fails because pollfds is still valid
     }
 }

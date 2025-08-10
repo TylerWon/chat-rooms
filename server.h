@@ -22,7 +22,7 @@ int create_listener_socket(struct addrinfo *res);
 /**
  * Accepts an incoming connection on the listening socket.
  *
- * On success, returns 0. Otherwise, returns -1.
+ * On success, returns 0. Returns -1 if there is an error and sets errno to indicate the error.
  */
 int accept_connection();
 
@@ -36,7 +36,7 @@ int create_connection();
 /**
  * Receives data from the socket sender and sends it to all other sockets (except for the listener socket).
  *
- * On success, returns 1. If the connection to the client is closed, returns 0. Returns -1 if there is an error.
+ * On success, returns 0. Returns -1 if there is an error.
  */
 int handle_data(int sender);
 
