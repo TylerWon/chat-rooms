@@ -7,8 +7,10 @@
 
 #include "message.h"
 
-int serialize(struct message *msg, char **buf, size_t *len) {
-    if (msg == NULL || buf == NULL || len == NULL) {
+int serialize(struct message *msg, char **buf, size_t *len)
+{
+    if (msg == NULL || buf == NULL || len == NULL)
+    {
         printf("invalid argument(s)");
         return -1;
     }
@@ -16,12 +18,13 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     // Determine message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
     TEXT_LEN text_len = strlen(msg->text) + 1; // +1 for null character
-    MSG_LEN msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;    
+    MSG_LEN msg_len = MSG_LEN_SIZE + TIMESTAMP_SIZE + NAME_LEN_SIZE + name_len + TEXT_LEN_SIZE + text_len;
     *len = msg_len;
 
     // Allocate msg_len space for the buffer
-    *buf = malloc(msg_len); 
-    if (*buf == NULL) {
+    *buf = malloc(msg_len);
+    if (*buf == NULL)
+    {
         printf("failed to allocate space for buffer\n");
         return -1;
     }
@@ -57,8 +60,10 @@ int serialize(struct message *msg, char **buf, size_t *len) {
     return 0;
 }
 
-int deserialize(char *buf, struct message *msg) {
-    if (buf == NULL || msg == NULL) {
+int deserialize(char *buf, struct message *msg)
+{
+    if (buf == NULL || msg == NULL)
+    {
         printf("invalid argument(s)");
         return -1;
     }
@@ -67,29 +72,30 @@ int deserialize(char *buf, struct message *msg) {
     buf += MSG_LEN_SIZE;
 
     // Get timestamp
-    TIMESTAMP timestamp = ntohl(*(TIMESTAMP *) buf);
+    TIMESTAMP timestamp = ntohl(*(TIMESTAMP *)buf);
     memcpy(&msg->timestamp, &timestamp, TIMESTAMP_SIZE);
     buf += TIMESTAMP_SIZE;
 
     // Get name length
-    NAME_LEN name_len = (*(NAME_LEN *) buf); // Don't need to convert name_len to Host Byte Order because it is one byte long
+    NAME_LEN name_len = (*(NAME_LEN *)buf); // Don't need to convert name_len to Host Byte Order because it is one byte long
     buf += NAME_LEN_SIZE;
-    
+
     // Get name
     memcpy(msg->name, buf, name_len);
     buf += name_len;
 
     // Get text length
-    TEXT_LEN text_len = ntohs(*((TEXT_LEN *) buf));
+    TEXT_LEN text_len = ntohs(*((TEXT_LEN *)buf));
     buf += TEXT_LEN_SIZE;
 
-    // Get text 
+    // Get text
     memcpy(msg->text, buf, text_len);
 
     return 0;
 }
 
-void print_message(struct message *msg) {
+void print_message(struct message *msg)
+{
     struct tm *sent_timestamp = localtime(&msg->timestamp);
     printf("(%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg->name, msg->text);
 }

@@ -11,7 +11,8 @@ typedef uint16_t TEXT_LEN;
 #define NAME_SIZE_LIMIT 50
 #define TEXT_SIZE_LIMIT 1000
 
-struct message {
+struct message
+{
     TIMESTAMP timestamp;
     char name[NAME_SIZE_LIMIT];
     char text[TEXT_SIZE_LIMIT];
@@ -19,15 +20,15 @@ struct message {
 
 /**
  * Serializes a message to be sent the client/server.
- * 
- * Message structure: 
+ *
+ * Message structure:
  * - message length (4 bytes)
  * - timestamp (4 bytes)
  * - name length (1 byte)
  * - name (max 50 bytes)
  * - text length (2 bytes)
- * - text (max 1000 bytes) 
- * 
+ * - text (max 1000 bytes)
+ *
  * On success, returns 0 and *buf will contain the serialized message while len will be its size in bytes. Otherwise,
  * -1 is returned.
  */
@@ -35,22 +36,22 @@ int serialize(struct message *msg, char **buf, size_t *len);
 
 /**
  * Deserializes a message received from the client/server.
- * 
- * Message structure: 
+ *
+ * Message structure:
  * - message length (4 bytes)
  * - timestamp (4 bytes)
  * - name length (1 byte)
  * - name (max 50 bytes)
  * - text length (2 bytes)
- * - text (max 1000 bytes) 
- * 
+ * - text (max 1000 bytes)
+ *
  * On success, returns 0 and msg will contain the deserialized message. Otherwise, -1 is returned.
  */
 int deserialize(char *buf, struct message *msg);
 
 /**
  * Prints a message in the format: (hh:mm) [name]: [message].
- * 
+ *
  * Example: (09:00) Tyler: Hello, world!
  */
 void print_message(struct message *msg);

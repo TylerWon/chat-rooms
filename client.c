@@ -14,55 +14,69 @@
 #include "net_utils.h"
 #include "sockaddr_utils.h"
 
-void clear_previous_line() {
-    printf("\033[A");   // Move cursor up one line
-    printf("\033[2K");  // Clear the entire line
+void clear_previous_line()
+{
+    printf("\033[A");  // Move cursor up one line
+    printf("\033[2K"); // Clear the entire line
 }
 
-void execute_command(char *str, char *name) {
+void execute_command(char *str, char *name)
+{
     char command[COMMAND_SIZE_LIMIT];
-    if (sscanf(str, "/%5s", command) != 1) {
+    if (sscanf(str, "/%5s", command) != 1)
+    {
         printf("command not provided\n");
         return;
     }
-    
-    if (strcmp(command, "name") == 0) {
+
+    if (strcmp(command, "name") == 0)
+    {
         char new_name[NAME_SIZE_LIMIT];
-        if (sscanf(str, "/%5s %100s", command, new_name) != 2) {
+        if (sscanf(str, "/%5s %100s", command, new_name) != 2)
+        {
             printf("name not provided\n");
             return;
         }
         memcpy(name, new_name, strlen(new_name) + 1);
         printf("set name to %s\n", name);
-    } else if (strcmp(command, "exit") == 0) {
+    }
+    else if (strcmp(command, "exit") == 0)
+    {
         exit(EXIT_SUCCESS);
-    } else {
+    }
+    else
+    {
         printf("not a valid command\n");
     }
 }
 
-int get_server_addr_info(char *port, struct addrinfo **res) {
+int get_server_addr_info(char *port, struct addrinfo **res)
+{
     struct addrinfo hints;
-    
+
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;        // Allow IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM;    // Stream socket
+    hints.ai_family = AF_UNSPEC;     // Allow IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM; // Stream socket
 
     return getaddrinfo(NULL, port, &hints, res); // Set node parameter to NULL to have loopback address returned
 }
 
-int create_socket(struct addrinfo *res) {
+int create_socket(struct addrinfo *res)
+{
     struct addrinfo *p;
     int sockfd;
-    for (p = res; p != NULL; p = p->ai_next) {
+    for (p = res; p != NULL; p = p->ai_next)
+    {
         // Create socket from address info
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1){
+        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        {
             perror("socket error");
             continue;
         }
 
         // Connect to server
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) != 0) {
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) != 0)
+        {
             perror("connect error");
             close(sockfd);
             continue;
@@ -78,16 +92,19 @@ int create_socket(struct addrinfo *res) {
     return -1;
 }
 
-int main() {
+int main()
+{
     int status;
     struct addrinfo *res;
-    if ((status = get_server_addr_info(PORT, &res)) != 0) {
+    if ((status = get_server_addr_info(PORT, &res)) != 0)
+    {
         printf("failed to get server's address info: %s\n", gai_strerror(status));
         exit(EXIT_FAILURE);
     }
 
     int sockfd;
-    if ((sockfd = create_socket(res)) == -1) {
+    if ((sockfd = create_socket(res)) == -1)
+    {
         printf("failed to create socket\n");
         exit(EXIT_FAILURE);
     }
@@ -97,9 +114,11 @@ int main() {
 
     struct message msg;
     strcpy(msg.name, DEFAULT_NAME);
-    while (1) {
+    while (1)
+    {
         // Read user input from STDIN
-        if (fgets(msg.text, sizeof(msg.text), stdin) == NULL) {
+        if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
+        {
             perror("failed to read user input");
             continue;
         }
@@ -108,18 +127,20 @@ int main() {
         printf("read input\n");
 
         // Execute command if input is a command
-        if (strncmp(msg.text, "/", 1) == 0) {
+        if (strncmp(msg.text, "/", 1) == 0)
+        {
             execute_command(msg.text, msg.name);
             continue;
         }
 
         // Set timestamp
         time(&msg.timestamp);
-        
+
         // Serialize message
         char *send_buf;
         size_t len;
-        if (serialize(&msg, &send_buf, &len) != 0) {
+        if (serialize(&msg, &send_buf, &len) != 0)
+        {
             printf("failed to serialize the message\n");
             continue;
         }
@@ -127,7 +148,8 @@ int main() {
         printf("serialized message\n");
 
         // Send message to server
-        if (sendall(sockfd, send_buf, len) == -1) {
+        if (sendall(sockfd, send_buf, len) == -1)
+        {
             printf("failed to send message\n");
             continue;
         }
@@ -140,10 +162,13 @@ int main() {
         // Receive reply from server
         char *recv_buf;
         ssize_t recvd = recvall(sockfd, &recv_buf);
-        if (recvd == -1) {
+        if (recvd == -1)
+        {
             printf("failed to receive message\n");
             continue;
-        } else if (recvd == 0) {
+        }
+        else if (recvd == 0)
+        {
             printf("connection closed\n");
             exit(EXIT_FAILURE);
         }
@@ -152,7 +177,8 @@ int main() {
 
         // Deserialize reply
         struct message reply;
-        if (deserialize(recv_buf, &reply) != 0) {
+        if (deserialize(recv_buf, &reply) != 0)
+        {
             printf("failed to deserialize the message\n");
             continue;
         }
