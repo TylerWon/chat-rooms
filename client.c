@@ -11,10 +11,13 @@
 
 #include "message.h"
 #include "net_utils.h"
+#include "pollfd_array.h"
 #include "sockaddr_utils.h"
 
 #define DEFAULT_NAME "Anonymous"
 #define COMMAND_SIZE_LIMIT 5
+
+char name[NAME_SIZE_LIMIT] = DEFAULT_NAME;
 
 /**
  * Clears previous line from terminal.
@@ -127,8 +130,101 @@ int create_socket(struct addrinfo *res)
     return -1;
 }
 
+/**
+ * Reads user input from STDIN and either executes it if its a command, or sends it to the server if it isn't.
+ *
+ * @param server  The socket for the connection to the server
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_input(int server)
+{
+    struct message msg;
+
+    if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
+    {
+        perror("failed to read user input");
+        return -1;
+    }
+    clear_previous_line();
+
+    printf("read input\n");
+
+    if (strncmp(msg.text, "/", 1) == 0)
+    {
+        execute_command(msg.text, name);
+        return 0;
+    }
+
+    time(&msg.timestamp);
+    strcpy(msg.name, name);
+
+    char *send_buf;
+    size_t len;
+    if (serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    if (sendall(server, send_buf, len) == -1)
+    {
+        perror("failed to send message");
+        return -1;
+    }
+    free(send_buf);
+
+    printf("sent message\n");
+
+    return 0;
+}
+
+/**
+ * Receives data from the server and prints it to the terminal.
+ *
+ * @param server  The socket for the connection to the server
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_server_data(int server)
+{
+    char *recv_buf;
+    ssize_t recvd = recvall(server, &recv_buf);
+    if (recvd == -1)
+    {
+        perror("failed to receive message");
+        return -1;
+    }
+    else if (recvd == 0)
+    {
+        printf("connection closed\n");
+        return -1;
+    }
+
+    printf("received message\n");
+
+    struct message msg;
+    if (deserialize(recv_buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+    free(recv_buf);
+
+    print_message(&msg);
+
+    return 0;
+}
+
 int main()
 {
+    struct pollfd_array *pollfds;
+    int server;
+
     int status;
     struct addrinfo *res;
     if ((status = get_server_addr_info(PORT, &res)) != 0)
@@ -137,8 +233,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    int sockfd;
-    if ((sockfd = create_socket(res)) == -1)
+    if ((server = create_socket(res)) == -1)
     {
         printf("failed to create socket\n");
         exit(EXIT_FAILURE);
@@ -147,82 +242,63 @@ int main()
     freeaddrinfo(res);
     res = NULL;
 
-    struct message msg;
-    strcpy(msg.name, DEFAULT_NAME);
+    if ((pollfds = pollfds_init()) == NULL)
+    {
+        printf("failed to initialize pollfds\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pollfd_array_append(server, POLLIN, pollfds) != 0)
+    {
+        printf("failed to append socket to pollfds");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pollfd_array_append(STDIN_FILENO, POLLIN, pollfds) != 0)
+    {
+        printf("failed to append stdin to pollfds\n");
+        exit(EXIT_FAILURE);
+    }
+
     while (1)
     {
-        // Read user input from STDIN
-        if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
+        if (poll(pollfds->fds, pollfds->len, -1) == -1)
         {
-            perror("failed to read user input");
-            continue;
-        }
-        clear_previous_line();
-
-        printf("read input\n");
-
-        // Execute command if input is a command
-        if (strncmp(msg.text, "/", 1) == 0)
-        {
-            execute_command(msg.text, msg.name);
-            continue;
-        }
-
-        // Set timestamp
-        time(&msg.timestamp);
-
-        // Serialize message
-        char *send_buf;
-        size_t len;
-        if (serialize(&msg, &send_buf, &len) != 0)
-        {
-            perror("failed to serialize the message");
-            continue;
-        }
-
-        printf("serialized message\n");
-
-        // Send message to server
-        if (sendall(sockfd, send_buf, len) == -1)
-        {
-            perror("failed to send message");
-            continue;
-        }
-
-        printf("sent message\n");
-
-        free(send_buf);
-        send_buf = NULL;
-
-        // Receive reply from server
-        char *recv_buf;
-        ssize_t recvd = recvall(sockfd, &recv_buf);
-        if (recvd == -1)
-        {
-            perror("failed to receive message");
-            continue;
-        }
-        else if (recvd == 0)
-        {
-            printf("connection closed\n");
+            perror("error occurred while polling sockets for events");
             exit(EXIT_FAILURE);
         }
 
-        printf("received message\n");
-
-        // Deserialize reply
-        struct message reply;
-        if (deserialize(recv_buf, &reply) != 0)
+        for (uint32_t i = 0; i < pollfds->len; i++)
         {
-            perror("failed to deserialize the message");
-            continue;
+            struct pollfd pfd = pollfds->fds[i];
+            int fd = pfd.fd;
+            short revents = pfd.revents;
+
+            if (revents & POLLHUP)
+            {
+                printf("connection to server closed\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (revents & POLLIN)
+            {
+                if (fd == STDIN_FILENO)
+                {
+                    if (handle_input(server) != 0)
+                    {
+                        printf("failed to handle user input\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else
+                {
+                    if (handle_server_data(server))
+                    {
+                        printf("failed to handle server data\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
         }
-
-        print_message(&reply);
-
-        free(recv_buf);
-        recv_buf = NULL;
     }
-
-    exit(EXIT_SUCCESS);
 }
