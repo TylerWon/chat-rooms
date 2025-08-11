@@ -135,27 +135,30 @@ int create_connection(int listener, struct pollfd_array *pollfds)
 }
 
 /**
- * Receives data from the socket sender and sends it to all sockets (except for the listener socket) being monitored in
+ * Receives data from the socket client and sends it to all sockets (except for the listener socket) being monitored in
  * the pollfd_array.
  *
- * @param sender    The socket to receive data from
+ * @param listener  The listener socket
+ * @param client    The socket to receive data from
  * @param pollfds   Pointer to a pollfd_array which contains the sockets the data should be sent to
  *
- * @return  0 on success.
+ * @return  1 on success.
+ *          0 when the client closes the connection.
  *          -1 on error.
  */
-int handle_data(int listener, int sender, struct pollfd_array *pollfds)
+int handle_client_data(int listener, int client, struct pollfd_array *pollfds)
 {
     char *buf;
-    ssize_t recvd = recvall(sender, &buf);
-    if (recvd <= 0)
+    ssize_t recvd = recvall(client, &buf);
+    if (recvd == -1)
     {
-        if (recvd == -1)
-            printf("failed to receive message on socket %d, %s\n", sender, strerror(errno));
-        else
-            printf("connection to socket %d closed\n", sender);
-
+        printf("failed to receive message on socket %d, %s\n", client, strerror(errno));
         return -1;
+    }
+    else if (recvd == 0)
+    {
+        printf("connection to socket %d closed\n", client);
+        return 0;
     }
 
     printf("received message\n");
@@ -177,7 +180,7 @@ int handle_data(int listener, int sender, struct pollfd_array *pollfds)
 
     printf("sent message to all open connections\n");
 
-    return 0;
+    return 1;
 }
 
 /**
@@ -262,7 +265,7 @@ int main()
                 if (close_connection(sockfd, i, pollfds) != 0)
                 {
                     printf("failed to close connection to socket %d\n", sockfd);
-                    continue;
+                    exit(EXIT_FAILURE);
                 }
                 i--; // repeat same index because last element in pollfds has taken its place
                 continue;
@@ -273,18 +276,27 @@ int main()
                 if (sockfd == listener)
                 {
                     if (create_connection(listener, pollfds) != 0)
+                    {
                         printf("failed to create new connection\n");
+                        exit(EXIT_FAILURE);
+                    }
                 }
                 else
                 {
-                    if (handle_data(listener, sockfd, pollfds) != 0)
+                    int status = handle_client_data(listener, sockfd, pollfds);
+                    if (status == 0)
                     {
                         if (close_connection(sockfd, i, pollfds) != 0)
                         {
                             printf("failed to close connection to socket %d\n", sockfd);
-                            continue;
+                            exit(EXIT_FAILURE);
                         }
                         i--; // repeat same index because last element in pollfds has taken its place
+                    }
+                    else if (status == -1)
+                    {
+                        printf("failed to handle client data on socket %d\n", sockfd);
+                        exit(EXIT_FAILURE);
                     }
                 }
             }
