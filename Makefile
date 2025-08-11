@@ -2,12 +2,12 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 
 # Header files
-DEPS = message.h net_utils.h pollfds.h sockaddr_utils.h
+DEPS = message.h net_utils.h pollfd_array.h sockaddr_utils.h
 
 # Object files
 OBJS_COMMON = net_utils.o sockaddr_utils.o
 OBJS_CLIENT = client.o message.o $(OBJS_COMMON)
-OBJS_SERVER = server.o pollfds.o $(OBJS_COMMON)
+OBJS_SERVER = server.o pollfd_array.o $(OBJS_COMMON)
 
 # Default target
 all: client server
