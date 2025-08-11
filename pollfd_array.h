@@ -15,7 +15,7 @@ struct pollfd_array
  * The returned struct should be freed by the caller when no longer needed.
  *
  * @return Pointer to an initialized pollfd_array on success.
- *         NULL if allocation fails (errno is set accordingly).
+ *         NULL if initialization fails.
  */
 struct pollfd_array *pollfds_init();
 

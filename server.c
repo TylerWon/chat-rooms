@@ -15,11 +15,16 @@
 #define BACKLOG_LIMIT 10
 
 /**
- * Gets the address info of the server for the given port. The IP address will be the wildcard address so connections
- * can be accpeted on any of the host's network addresses.
+ * Gets the address info of the server for the given port and stores it in res. The IP address will be the wildcard
+ * address so connections can be accpeted on any of the host's network addresses.
  *
- * On success, returns 1 and stores the address info in *res which is a linked list of struct addrinfos. Otherwise,
- * returns a non-zero error code (same codes as getaddrinfo()).
+ * Res should be freed when it is no longer in use.
+ *
+ * @param port  The port to get address info for
+ * @param res   Double pointer to an addrinfo which will store the result of the address look-up
+ *
+ * @return  0 on success.
+ *          Non-zero error code (same codes as getaddrinfo()) on error.
  */
 int get_server_addr_info(char *port, struct addrinfo **res)
 {
@@ -34,10 +39,12 @@ int get_server_addr_info(char *port, struct addrinfo **res)
 }
 
 /**
- * Creates a socket for listening to incoming connections to the address provided in res (a linked list of struct
- * addrinfos).
+ * Creates a socket for listening to incoming connections to the address provided in res
  *
- * On success, returns the socket file descriptor. Otherwise, returns -1.
+ * @param res   Pointer to a linked list of addrinfos which contain the address used to create the socket
+ *
+ * @return  The socket file descriptor for the listening socket.
+ *          -1 on error.
  */
 int create_listener_socket(struct addrinfo *res)
 {
@@ -74,9 +81,12 @@ int create_listener_socket(struct addrinfo *res)
 }
 
 /**
- * Accepts an incoming connection on the listening socket.
+ * Accepts an incoming connection on the given socket.
  *
- * On success, returns 0. Returns -1 if there is an error and sets errno to indicate the error.
+ * @param listener  The socket to accept the connection on
+ *
+ * @return  0 on success.
+ *          -1 on error (errno is set appropriately).
  */
 int accept_connection(int listener)
 {
@@ -94,10 +104,14 @@ int accept_connection(int listener)
 }
 
 /**
- * Accepts a new connection on the listening socket and appends the resulting socket file descriptor to the pollfd_array
+ * Accepts a new connection on the given socket and appends the resulting socket file descriptor to the pollfd_array
  * so it can be monitored.
  *
- * On success, returns 0. Otherwise, returns -1.
+ * @param listener  The socket to accept the new connection on
+ * @param pollfds   Pointer to a pollfd_array which the new socket should be added to
+ *
+ * @return  0 on success.
+ *          -1 on error.
  */
 int create_connection(int listener, struct pollfd_array *pollfds)
 {
@@ -121,10 +135,14 @@ int create_connection(int listener, struct pollfd_array *pollfds)
 }
 
 /**
- * Receives data from the socket sender and sends it to all other sockets (except for the listener socket) in the
- * given pollfd_array.
+ * Receives data from the socket sender and sends it to all sockets (except for the listener socket) being monitored in
+ * the pollfd_array.
  *
- * On success, returns 0. Returns -1 if there is an error.
+ * @param sender    The socket to receive data from
+ * @param pollfds   Pointer to a pollfd_array which contains the sockets the data should be sent to
+ *
+ * @return  0 on success.
+ *          -1 on error.
  */
 int handle_data(int listener, int sender, struct pollfd_array *pollfds)
 {
@@ -163,9 +181,14 @@ int handle_data(int listener, int sender, struct pollfd_array *pollfds)
 }
 
 /**
- * Closes the connection to the given socket and removes it from the pollfd_array.
+ * Closes the connection to the given socket and removes it from being monitored in the pollfd_array.
  *
- * On success, returns 0. Returns -1 if there is an error.
+ * @param sockfd    The socket to close
+ * @param i         The index of the socket in pollfd_array
+ * @param pollfds   Pointer to the pollfd_array
+ *
+ * @return  0 on success.
+ *          -1 on error.
  */
 int close_connection(int sockfd, uint32_t i, struct pollfd_array *pollfds)
 {
@@ -210,7 +233,7 @@ int main()
 
     if ((pollfds = pollfds_init()) == NULL)
     {
-        perror("failed to initialize pollfds");
+        printf("failed to initialize pollfds\n");
         exit(EXIT_FAILURE);
     }
 

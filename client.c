@@ -31,6 +31,9 @@ void clear_previous_line()
  * Commands:
  * - /name [name] - Sets the user's name to [name]
  * - /exit - Exits the application
+ *
+ * @param str   The command
+ * @param name  Pointer to a char buffer which will store the name the user entered (for the /name command)
  */
 void execute_command(char *str, char *name)
 {
@@ -63,11 +66,16 @@ void execute_command(char *str, char *name)
 }
 
 /**
- * Gets the address info of the server for the given port. The server runs on the same host as the client so the IP
- * address will be the loopback address (i.e. 127.0.0.1 or ::1).
+ * Gets the address info of the server for the given port and stores it in res. The server runs on the same host as the
+ * client so the IP address will be the loopback address (i.e. 127.0.0.1 or ::1).
  *
- * On success, returns 1 and stores the address info in *res which is a linked list of struct addrinfos. Otherwise,
- * returns a non-zero error code (same codes as getaddrinfo()).
+ * Res should be freed when it is no longer in use.
+ *
+ * @param port  The port to get address info for
+ * @param res   Double pointer to an addrinfo which will store the result of the address look-up
+ *
+ * @return  0 on success.
+ *          Non-zero error code (same codes as getaddrinfo()) on error.
  */
 int get_server_addr_info(char *port, struct addrinfo **res)
 {
@@ -81,9 +89,12 @@ int get_server_addr_info(char *port, struct addrinfo **res)
 }
 
 /**
- * Creates a socket which is connected to the address provided in res (a linked list of struct addrinfos).
+ * Creates a socket which is connected to the address provided in res
  *
- * On success, returns the socket file descriptor. Otherwise, returns -1.
+ * @param res   Pointer to a linked list of addrinfos which contain the address used to create the socket
+ *
+ * @return  The socket file descriptor for the new socket.
+ *          -1 on error.
  */
 int create_socket(struct addrinfo *res)
 {

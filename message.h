@@ -19,7 +19,8 @@ struct message
 };
 
 /**
- * Serializes a message to be sent the client/server.
+ * Serializes a message to be sent the client/server into a buffer. The buffer should be freed when it is no longer
+ * needed.
  *
  * Message structure:
  * - message length (4 bytes)
@@ -29,13 +30,17 @@ struct message
  * - text length (2 bytes)
  * - text (max 1000 bytes)
  *
- * On success, returns 0 and *buf will contain the serialized message while len will be its size in bytes. Returns -1
- * if there is an error and sets errno to indicate the error.
+ * @param msg   The message to serialize
+ * @param buf   Double pointer to a char buffer which will store the serialized message
+ * @param len   Pointer to a size_t which will store the size of the buffer
+ *
+ * @return  0 on success.
+ *          -1 on error (errno is set appropriately).
  */
 int serialize(struct message *msg, char **buf, size_t *len);
 
 /**
- * Deserializes a message received from the client/server.
+ * Deserializes a message received from the client/server from a buffer.
  *
  * Message structure:
  * - message length (4 bytes)
@@ -45,8 +50,11 @@ int serialize(struct message *msg, char **buf, size_t *len);
  * - text length (2 bytes)
  * - text (max 1000 bytes)
  *
- * On success, returns 0 and msg will contain the deserialized message. Returns -1 if there is an error and sets errno
- * to indicate the error.
+ * @param buf   Pointer to a char buffer which contains the message
+ * @param msg   Pointer to a message which will store the deserialized message
+ *
+ * @return  0 on success.
+ *          -1 on error (errno is set appropriately).
  */
 int deserialize(char *buf, struct message *msg);
 
@@ -54,5 +62,7 @@ int deserialize(char *buf, struct message *msg);
  * Prints a message in the format: (hh:mm) [name]: [message].
  *
  * Example: (09:00) Tyler: Hello, world!
+ *
+ * @param msg   The message to print
  */
 void print_message(struct message *msg);
