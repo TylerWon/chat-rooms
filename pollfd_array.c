@@ -3,7 +3,7 @@
 
 #include "pollfd_array.h"
 
-#define FDS_INITIAL_CAPACITY 5
+#define INITIAL_CAPACITY 5
 
 /**
  * Resizes the provided pollfd_array to hold new_cap elements.
@@ -33,7 +33,7 @@ struct pollfd_array *pollfd_array_init()
     if (pollfds == NULL)
         return NULL;
 
-    struct pollfd *fds = calloc(FDS_INITIAL_CAPACITY, sizeof(struct pollfd));
+    struct pollfd *fds = calloc(INITIAL_CAPACITY, sizeof(struct pollfd));
     if (fds == NULL)
     {
         free(pollfds);
@@ -42,7 +42,7 @@ struct pollfd_array *pollfd_array_init()
 
     pollfds->fds = fds;
     pollfds->len = 0;
-    pollfds->capacity = FDS_INITIAL_CAPACITY;
+    pollfds->capacity = INITIAL_CAPACITY;
 
     return pollfds;
 }
@@ -53,6 +53,7 @@ int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
     uint32_t len = pollfds->len;
     uint32_t capacity = pollfds->capacity;
 
+    // Double size if too small
     if (len + 1 > capacity)
         if (resize(2 * capacity, pollfds) != 0)
         {
@@ -87,7 +88,8 @@ int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds)
 
     printf("fd at index %d removed from pollfd_array\n", i);
 
-    if (pollfds->len <= capacity / 2 && capacity / 2 >= FDS_INITIAL_CAPACITY)
+    // Halve size if at least half empty, unless resulting array would be smaller than the initial capacity
+    if (pollfds->len <= capacity / 2 && capacity / 2 >= INITIAL_CAPACITY)
     {
         resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd_array is still valid
     }

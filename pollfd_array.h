@@ -10,8 +10,8 @@ struct pollfd_array
 };
 
 /**
- * Allocates and initializes a new pollfd_array structure to manage a dynamic array of struct pollfd entries for use
- * with the poll() system call.
+ * Initializes a new pollfd_array structure to manage a dynamic array of struct pollfd entries for use with the poll()
+ * system call.
  *
  * The returned struct should be freed by the caller when no longer needed.
  *
@@ -21,8 +21,7 @@ struct pollfd_array
 struct pollfd_array *pollfd_array_init();
 
 /**
- * Appends a new struct pollfd entry with the specified file descriptor and events to the given pollfd_array. If the
- * internal array is full, its capacity is doubled before appending.
+ * Appends a new struct pollfd entry with the specified file descriptor and events to the given pollfd_array.
  *
  * @param fd        The file descriptor to monitor.
  * @param events    The event flags to watch for (e.g., POLLIN).
@@ -35,8 +34,7 @@ int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds);
 
 /**
  * Removes the struct pollfd entry at the specified index from the given pollfd_array. The entry is removed by replacing
- * it with the last element in the array. If, after removal, the array is at least half empty, its capacity is halved to
- * reduce memory usage.
+ * it with the last element in the array.
  *
  * If no entry with the specified fd is found, the function does nothing.
  *
