@@ -242,7 +242,7 @@ int main()
     freeaddrinfo(res);
     res = NULL;
 
-    if ((pollfds = pollfds_init()) == NULL)
+    if ((pollfds = pollfd_array_init()) == NULL)
     {
         printf("failed to initialize pollfds\n");
         exit(EXIT_FAILURE);

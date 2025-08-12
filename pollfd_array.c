@@ -14,7 +14,7 @@
  * @return 0 on success.
  *         -1 on failure.
  */
-int pollfds_resize(nfds_t new_cap, struct pollfd_array *pollfds)
+int resize(uint32_t new_cap, struct pollfd_array *pollfds)
 {
     struct pollfd *fds = reallocarray(pollfds->fds, new_cap, sizeof(struct pollfd));
     if (fds == NULL)
@@ -22,12 +22,12 @@ int pollfds_resize(nfds_t new_cap, struct pollfd_array *pollfds)
     pollfds->fds = fds;
     pollfds->capacity = new_cap;
 
-    printf("pollfd_array resized to %ld\n", pollfds->capacity);
+    printf("pollfd_array resized to %d\n", pollfds->capacity);
 
     return 0;
 }
 
-struct pollfd_array *pollfds_init()
+struct pollfd_array *pollfd_array_init()
 {
     struct pollfd_array *pollfds = malloc(sizeof(struct pollfd_array));
     if (pollfds == NULL)
@@ -50,11 +50,11 @@ struct pollfd_array *pollfds_init()
 int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
 {
     struct pollfd *fds = pollfds->fds;
-    nfds_t len = pollfds->len;
-    nfds_t capacity = pollfds->capacity;
+    uint32_t len = pollfds->len;
+    uint32_t capacity = pollfds->capacity;
 
     if (len + 1 > capacity)
-        if (pollfds_resize(2 * capacity, pollfds) != 0)
+        if (resize(2 * capacity, pollfds) != 0)
         {
             printf("failed to resize pollfd_array\n");
             return -1;
@@ -73,8 +73,8 @@ int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
 int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds)
 {
     struct pollfd *fds = pollfds->fds;
-    nfds_t len = pollfds->len;
-    nfds_t capacity = pollfds->capacity;
+    uint32_t len = pollfds->len;
+    uint32_t capacity = pollfds->capacity;
 
     if (i >= len)
     {
@@ -89,7 +89,7 @@ int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds)
 
     if (pollfds->len <= capacity / 2 && capacity / 2 >= FDS_INITIAL_CAPACITY)
     {
-        pollfds_resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd_array is still valid
+        resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd_array is still valid
     }
 
     return 0;

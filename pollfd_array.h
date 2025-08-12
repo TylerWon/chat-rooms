@@ -1,11 +1,12 @@
 #include <poll.h>
 #include <stdint.h>
 
+// A dynamic array of struct pollfd
 struct pollfd_array
 {
     struct pollfd *fds;
-    nfds_t len;      // Number of elements in fds
-    nfds_t capacity; // Number of elements that can be stored in fds
+    uint32_t len;      // Number of elements in fds
+    uint32_t capacity; // Number of elements that can be stored in fds
 };
 
 /**
@@ -17,7 +18,7 @@ struct pollfd_array
  * @return Pointer to an initialized pollfd_array on success.
  *         NULL if initialization fails.
  */
-struct pollfd_array *pollfds_init();
+struct pollfd_array *pollfd_array_init();
 
 /**
  * Appends a new struct pollfd entry with the specified file descriptor and events to the given pollfd_array. If the
