@@ -14,10 +14,7 @@
 #include "pollfd_array.h"
 #include "sockaddr_utils.h"
 
-#define DEFAULT_NAME "Anonymous"
 #define COMMAND_SIZE_LIMIT 5
-
-char name[NAME_SIZE_LIMIT] = DEFAULT_NAME;
 
 /**
  * Clears previous line from terminal.
@@ -36,9 +33,8 @@ void clear_previous_line()
  * - /exit - Exits the application
  *
  * @param str   The command
- * @param name  Pointer to a char buffer which will store the name the user entered (for the /name command)
  */
-void execute_command(char *str, char *name)
+void execute_command(char *str)
 {
     char command[COMMAND_SIZE_LIMIT];
     if (sscanf(str, "/%5s", command) != 1)
@@ -55,8 +51,6 @@ void execute_command(char *str, char *name)
             printf("name not provided\n");
             return;
         }
-        memcpy(name, new_name, strlen(new_name) + 1);
-        printf("set name to %s\n", name);
     }
     else if (strcmp(command, "exit") == 0)
     {
@@ -72,7 +66,7 @@ void execute_command(char *str, char *name)
  * Gets the address info of the server for the given port and stores it in res. The server runs on the same host as the
  * client so the IP address will be the loopback address (i.e. 127.0.0.1 or ::1).
  *
- * Res should be freed when it is no longer in use.
+ * res should be freed when it is no longer in use.
  *
  * @param port  The port to get address info for
  * @param res   Double pointer to an addrinfo which will store the result of the address look-up
@@ -92,18 +86,18 @@ int get_server_addr_info(char *port, struct addrinfo **res)
 }
 
 /**
- * Creates a socket which is connected to the address provided in res
+ * Creates a socket which is connected to the address provided in addr
  *
- * @param res   Pointer to a linked list of addrinfos which contain the address used to create the socket
+ * @param res   Pointer to a linked list of addrinfos containing the address used to create the socket
  *
  * @return  The socket file descriptor for the new socket.
  *          -1 on error.
  */
-int create_socket(struct addrinfo *res)
+int create_socket(struct addrinfo *addr)
 {
     struct addrinfo *p;
     int sockfd;
-    for (p = res; p != NULL; p = p->ai_next)
+    for (p = addr; p != NULL; p = p->ai_next)
     {
         // Create socket from address info
         if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
@@ -131,17 +125,22 @@ int create_socket(struct addrinfo *res)
 }
 
 /**
- * Reads user input from STDIN and either executes it if its a command, or sends it to the server if it isn't.
+ * Handles input from the user.
  *
- * @param server  The socket for the connection to the server
+ * - If input is a command: executes the command
+ * - Otherwise, input is a message so sends it to the server
+ *
+ * @param server  The server socket
  *
  * @return  0 on success.
  *          -1 on error.
  */
 int handle_input(int server)
 {
+    // Since only the text field of message gets set, initialize struct with 0s to avoid uninitialized value error
+    // for other fields when serializing
     struct message msg;
-
+    memset(&msg, 0, sizeof(msg));
     if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
     {
         perror("failed to read user input");
@@ -153,12 +152,9 @@ int handle_input(int server)
 
     if (strncmp(msg.text, "/", 1) == 0)
     {
-        execute_command(msg.text, name);
+        execute_command(msg.text);
         return 0;
     }
-
-    time(&msg.timestamp);
-    strcpy(msg.name, name);
 
     char *send_buf;
     size_t len;
@@ -183,14 +179,17 @@ int handle_input(int server)
 }
 
 /**
- * Receives data from the server and prints it to the terminal.
+ * Handles a message from the server.
  *
- * @param server  The socket for the connection to the server
+ * - Receives message from the server
+ * - Prints it to the terminal
+ *
+ * @param server  The server socket
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int handle_server_data(int server)
+int handle_server_message(int server)
 {
     char *recv_buf;
     ssize_t recvd = recvall(server, &recv_buf);
@@ -292,7 +291,7 @@ int main()
                 }
                 else
                 {
-                    if (handle_server_data(server))
+                    if (handle_server_message(server))
                     {
                         printf("failed to handle server data\n");
                         exit(EXIT_FAILURE);

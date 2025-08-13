@@ -1,3 +1,8 @@
+#ifndef MESSAGE_H
+#define MESSAGE_H
+
+#include <stddef.h>
+
 typedef uint32_t MSG_LEN;
 typedef int64_t TIMESTAMP;
 typedef uint8_t NAME_LEN;
@@ -66,3 +71,5 @@ int deserialize(char *buf, struct message *msg);
  * @param msg   The message to print
  */
 void print_message(struct message *msg);
+
+#endif

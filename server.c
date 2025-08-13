@@ -6,11 +6,14 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
+#include "message.h"
 #include "net_utils.h"
 #include "pollfd_array.h"
 #include "sockaddr_utils.h"
+#include "user_table.h"
 
 #define BACKLOG_LIMIT 10
 
@@ -104,16 +107,20 @@ int accept_connection(int listener)
 }
 
 /**
- * Accepts a new connection on the given socket and appends the resulting socket file descriptor to the pollfd_array
- * so it can be monitored.
+ * Handles a new client connection.
  *
- * @param listener  The socket to accept the new connection on
- * @param pollfds   Pointer to a pollfd_array which the new socket should be added to
+ * - Accepts the connection on the given socket
+ * - Adds the new socket file descriptor to an array containing all open sockets
+ * - Creates a new user for the connection and adds it to a hash table containing all users
+ *
+ * @param listener      The socket to accept the new connection on
+ * @param pollfds       Pointer to an array containing all open sockets
+ * @param user_table    Double pointer to a hash table containing all users
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int create_connection(int listener, struct pollfd_array *pollfds)
+int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **user_table)
 {
     int sockfd;
     if ((sockfd = accept_connection(listener)) == -1)
@@ -129,27 +136,37 @@ int create_connection(int listener, struct pollfd_array *pollfds)
         return -1;
     }
 
+    if (user_table_add(sockfd, user_table))
+    {
+        printf("failed to add user with id %d\n", sockfd);
+        return -1;
+    }
+
     printf("created new connection\n");
 
     return 0;
 }
 
 /**
- * Receives data from the socket client and sends it to all sockets (except for the listener socket) being monitored in
- * the pollfd_array.
+ * Handles a message from a client.
  *
- * @param listener  The listener socket
- * @param client    The socket to receive data from
- * @param pollfds   Pointer to a pollfd_array which contains the sockets the data should be sent to
+ * - Receives the message from the client socket
+ * - Adds a timestamp and the client's name to the message
+ * - Sends the message to all open sockets (except for the listener socket)
+ *
+ * @param listener      The listener socket
+ * @param client        The client socket to receive the message from
+ * @param user_table    Double pointer to a hash table containing all users
+ * @param pollfds       Pointer to an array containing all open sockets
  *
  * @return  1 on success.
  *          0 when the client closes the connection.
  *          -1 on error.
  */
-int handle_client_data(int listener, int client, struct pollfd_array *pollfds)
+int handle_client_message(int listener, int client, struct user **user_table, struct pollfd_array *pollfds)
 {
-    char *buf;
-    ssize_t recvd = recvall(client, &buf);
+    char *recv_buf;
+    ssize_t recvd = recvall(client, &recv_buf);
     if (recvd == -1)
     {
         printf("failed to receive message on socket %d, %s\n", client, strerror(errno));
@@ -163,6 +180,38 @@ int handle_client_data(int listener, int client, struct pollfd_array *pollfds)
 
     printf("received message\n");
 
+    struct message msg;
+    if (deserialize(recv_buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+    free(recv_buf);
+
+    printf("deserialized message\n");
+
+    struct user *user = user_table_find(client, user_table);
+    if (user == NULL)
+    {
+        printf("failed to find user %d\n", client);
+        return -1;
+    }
+
+    time(&msg.timestamp);
+    strcpy(msg.name, user->name);
+
+    printf("added name and timestamp to message\n");
+
+    char *send_buf;
+    size_t len;
+    if (serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
     for (uint32_t i = 0; i < pollfds->len; i++)
     {
         int receiver = pollfds->fds[i].fd;
@@ -170,13 +219,13 @@ int handle_client_data(int listener, int client, struct pollfd_array *pollfds)
         if (receiver == listener)
             continue;
 
-        if (sendall(receiver, buf, recvd) == -1)
+        if (sendall(receiver, send_buf, len) == -1)
         {
             printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
             return -1;
         }
     }
-    free(buf);
+    free(send_buf);
 
     printf("sent message to all open connections\n");
 
@@ -184,25 +233,36 @@ int handle_client_data(int listener, int client, struct pollfd_array *pollfds)
 }
 
 /**
- * Closes the connection to the given socket and removes it from being monitored in the pollfd_array.
+ * Handles terminiation of a client.
  *
- * @param sockfd    The socket to close
- * @param i         The index of the socket in pollfd_array
- * @param pollfds   Pointer to the pollfd_array
+ * - Removes the socket from the array of sockets
+ * - Removes the user associated with the client from the hash table of users
+ * - Closes the connection to the given client
+ *
+ * @param client        The client socket to close
+ * @param i             The index of the socket in pollfds
+ * @param pollfds       Pointer to an array containing all open sockets
+ * @param user_table    Double pointer to a hash table containing all users
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int close_connection(int sockfd, uint32_t i, struct pollfd_array *pollfds)
+int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollfds, struct user **user_table)
 {
     if (pollfd_array_delete(i, pollfds) != 0)
     {
-        printf("failed to delete socket %d from pollfds\n", sockfd);
+        printf("failed to delete socket %d from pollfds\n", client);
         return -1;
     }
 
-    close(sockfd);
-    printf("closed connection to socket %d\n", sockfd);
+    if (user_table_delete(client, user_table) != 0)
+    {
+        printf("failed to delete user %d\n", client);
+        return -1;
+    }
+
+    close(client);
+    printf("closed connection to socket %d\n", client);
 
     return 0;
 }
@@ -211,6 +271,7 @@ int main()
 {
     int listener;
     struct pollfd_array *pollfds;
+    struct user *user_table = NULL;
 
     int status;
     struct addrinfo *res;
@@ -262,7 +323,7 @@ int main()
 
             if (revents & POLLHUP)
             {
-                if (close_connection(sockfd, i, pollfds) != 0)
+                if (handle_client_termination(sockfd, i, pollfds, &user_table) != 0)
                 {
                     printf("failed to close connection to socket %d\n", sockfd);
                     exit(EXIT_FAILURE);
@@ -275,7 +336,7 @@ int main()
             {
                 if (sockfd == listener)
                 {
-                    if (create_connection(listener, pollfds) != 0)
+                    if (handle_new_client(listener, pollfds, &user_table) != 0)
                     {
                         printf("failed to create new connection\n");
                         exit(EXIT_FAILURE);
@@ -283,10 +344,10 @@ int main()
                 }
                 else
                 {
-                    int status = handle_client_data(listener, sockfd, pollfds);
+                    int status = handle_client_message(listener, sockfd, &user_table, pollfds);
                     if (status == 0)
                     {
-                        if (close_connection(sockfd, i, pollfds) != 0)
+                        if (handle_client_termination(sockfd, i, pollfds, &user_table) != 0)
                         {
                             printf("failed to close connection to socket %d\n", sockfd);
                             exit(EXIT_FAILURE);
