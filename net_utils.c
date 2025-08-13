@@ -25,12 +25,12 @@ ssize_t sendall(int sockfd, char *buf, size_t len)
 
 ssize_t recvall(int sockfd, char **buf)
 {
-    // Get message length with first receive
-    char *msg = malloc(MSG_LEN_SIZE);
+    // Get total message length with first receive
+    char *msg = malloc(sizeof(TOTAL_MSG_LEN));
     if (msg == NULL)
         return -1;
 
-    ssize_t recvd = recv(sockfd, msg, MSG_LEN_SIZE, RECV_FLAGS);
+    ssize_t recvd = recv(sockfd, msg, sizeof(TOTAL_MSG_LEN), RECV_FLAGS);
     if (recvd <= 0)
     {
         free(msg);
@@ -40,17 +40,17 @@ ssize_t recvall(int sockfd, char **buf)
             return -1;
     }
 
-    MSG_LEN msg_len = ntohl(*((MSG_LEN *)msg));
+    TOTAL_MSG_LEN total_len = ntohl(*((TOTAL_MSG_LEN *)msg));
 
     // Get rest of message with remaining receives
-    msg = realloc(msg, msg_len);
+    msg = realloc(msg, total_len);
     if (msg == NULL)
         return -1;
 
     size_t total_recvd = recvd;
-    while (total_recvd < msg_len)
+    while (total_recvd < total_len)
     {
-        recvd = recv(sockfd, msg + total_recvd, msg_len - total_recvd, RECV_FLAGS);
+        recvd = recv(sockfd, msg + total_recvd, total_len - total_recvd, RECV_FLAGS);
         if (recvd <= 0)
         {
             free(msg);

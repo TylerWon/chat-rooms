@@ -137,8 +137,8 @@ int create_socket(struct addrinfo *addr)
  */
 int handle_input(int server)
 {
-    // Since only the text field of message gets set, initialize struct with 0s to avoid uninitialized value error
-    // for other fields when serializing
+    // Only the text field of message gets set by the client so initialize struct with 0s to avoid uninitialized value
+    // error for other fields when serializing
     struct message msg;
     memset(&msg, 0, sizeof(msg));
     if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)

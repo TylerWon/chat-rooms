@@ -3,15 +3,10 @@
 
 #include <stddef.h>
 
-typedef uint32_t MSG_LEN;
+typedef uint32_t TOTAL_MSG_LEN;
 typedef int64_t TIMESTAMP;
 typedef uint8_t NAME_LEN;
 typedef uint16_t TEXT_LEN;
-
-#define MSG_LEN_SIZE sizeof(MSG_LEN)
-#define TIMESTAMP_SIZE sizeof(TIMESTAMP)
-#define NAME_LEN_SIZE sizeof(NAME_LEN)
-#define TEXT_LEN_SIZE sizeof(TEXT_LEN)
 
 #define NAME_SIZE_LIMIT 50
 #define TEXT_SIZE_LIMIT 1000
