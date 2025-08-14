@@ -10,38 +10,35 @@ struct pollfd_array
 };
 
 /**
- * Initializes a new pollfd_array structure to manage a dynamic array of struct pollfd entries for use with the poll()
- * system call.
+ * Initializes a dynamic array of struct pollfds to be used with the poll() system call.
  *
  * The returned struct should be freed by the caller when no longer needed.
  *
- * @return Pointer to an initialized pollfd_array on success.
+ * @return Pointer to an array of pollfds on success.
  *         NULL if initialization fails.
  */
 struct pollfd_array *pollfd_array_init();
 
 /**
- * Appends a new struct pollfd entry with the specified file descriptor and events to the given pollfd_array.
+ * Appends a new pollfd with the specified file descriptor and events to the array of pollfds.
  *
- * @param fd        The file descriptor to monitor.
- * @param events    The event flags to watch for (e.g., POLLIN).
- * @param pollfds   Pointer to the pollfd_array to append to.
+ * @param pollfds   Pointer to the array of pollfds to modify.
+ * @param fd        The file descriptor for the new struct pollfd.
+ * @param events    The events for the new struct pollfd.
  *
  * @return 0 on success.
  *         -1 on failure.
  */
-int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds);
+int pollfd_array_append(struct pollfd_array *pollfds, int fd, short events);
 
 /**
- * Removes the struct pollfd entry at the specified index from the given pollfd_array. The entry is removed by replacing
- * it with the last element in the array.
+ * Removes the pollfd at the specified index from the array of pollfds. The entry is removed by replacing it with the
+ * last element in the array. If no entry with the specified fd is found, the function does nothing.
  *
- * If no entry with the specified fd is found, the function does nothing.
- *
- * @param i         The index of the entry to remove.
- * @param pollfds   Pointer to the pollfd_array to modify.
+ * @param pollfds   Pointer to the array of pollfds to modify.
+ * @param i         The index of the pollfd to remove.
  *
  * @return 0 on success.
  *         -1 on failure.
  */
-int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds);
+int pollfd_array_delete(struct pollfd_array *pollfds, uint32_t i);

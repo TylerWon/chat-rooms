@@ -47,7 +47,7 @@ struct pollfd_array *pollfd_array_init()
     return pollfds;
 }
 
-int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
+int pollfd_array_append(struct pollfd_array *pollfds, int fd, short events)
 {
     struct pollfd *fds = pollfds->fds;
     uint32_t len = pollfds->len;
@@ -57,7 +57,7 @@ int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
     if (len + 1 > capacity)
         if (resize(2 * capacity, pollfds) != 0)
         {
-            printf("failed to resize pollfd_array\n");
+            printf("failed to resize pollfd array\n");
             return -1;
         }
 
@@ -66,12 +66,12 @@ int pollfd_array_append(int fd, short events, struct pollfd_array *pollfds)
     fds[len].revents = 0;
     pollfds->len++;
 
-    printf("fd %d added to pollfd_array\n", fd);
+    printf("added fd %d to pollfd array\n", fd);
 
     return 0;
 }
 
-int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds)
+int pollfd_array_delete(struct pollfd_array *pollfds, uint32_t i)
 {
     struct pollfd *fds = pollfds->fds;
     uint32_t len = pollfds->len;
@@ -79,19 +79,19 @@ int pollfd_array_delete(uint32_t i, struct pollfd_array *pollfds)
 
     if (i >= len)
     {
-        printf("index %i not in pollfd_array\n", i);
+        printf("index %i not in pollfd array\n", i);
         return -1;
     }
 
     fds[i] = fds[len - 1];
     pollfds->len--;
 
-    printf("fd at index %d removed from pollfd_array\n", i);
+    printf("removed fd at index %d from pollfd array\n", i);
 
     // Halve size if at least half empty, unless resulting array would be smaller than the initial capacity
     if (pollfds->len <= capacity / 2 && capacity / 2 >= INITIAL_CAPACITY)
     {
-        resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd_array is still valid
+        resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd array is still valid
     }
 
     return 0;

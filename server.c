@@ -114,7 +114,7 @@ int accept_connection(int listener)
  * - Creates a new user for the connection and adds it to a hash table containing all users
  *
  * @param listener      The socket to accept the new connection on
- * @param pollfds       Pointer to an array containing all open sockets
+ * @param pollfds       Pointer to an array containing all open socket fds
  * @param user_table    Double pointer to a hash table containing all users
  *
  * @return  0 on success.
@@ -129,14 +129,14 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
         return -1;
     }
 
-    if (pollfd_array_append(sockfd, POLLIN, pollfds) != 0)
+    if (pollfd_array_append(pollfds, sockfd, POLLIN) != 0)
     {
-        printf("failed to add socket %d to pollfds\n", sockfd);
+        printf("failed to add fd %d to pollfd array\n", sockfd);
         close(sockfd);
         return -1;
     }
 
-    if (user_table_add(sockfd, user_table))
+    if (user_table_add(user_table, sockfd))
     {
         printf("failed to add user with id %d\n", sockfd);
         return -1;
@@ -157,7 +157,7 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
  * @param listener      The listener socket
  * @param client        The client socket to receive the message from
  * @param user_table    Double pointer to a hash table containing all users
- * @param pollfds       Pointer to an array containing all open sockets
+ * @param pollfds       Pointer to an array containing all open socket fds
  *
  * @return  1 on success.
  *          0 when the client closes the connection.
@@ -190,7 +190,7 @@ int handle_client_message(int listener, int client, struct user **user_table, st
 
     printf("deserialized message\n");
 
-    struct user *user = user_table_find(client, user_table);
+    struct user *user = user_table_find(user_table, client);
     if (user == NULL)
     {
         printf("failed to find user %d\n", client);
@@ -235,13 +235,13 @@ int handle_client_message(int listener, int client, struct user **user_table, st
 /**
  * Handles terminiation of a client.
  *
- * - Removes the socket from the array of sockets
+ * - Removes the socket fd from the array of socket fds
  * - Removes the user associated with the client from the hash table of users
  * - Closes the connection to the given client
  *
  * @param client        The client socket to close
- * @param i             The index of the socket in pollfds
- * @param pollfds       Pointer to an array containing all open sockets
+ * @param i             The index of the socket fd in pollfds
+ * @param pollfds       Pointer to an array containing all open socket fds
  * @param user_table    Double pointer to a hash table containing all users
  *
  * @return  0 on success.
@@ -249,13 +249,13 @@ int handle_client_message(int listener, int client, struct user **user_table, st
  */
 int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollfds, struct user **user_table)
 {
-    if (pollfd_array_delete(i, pollfds) != 0)
+    if (pollfd_array_delete(pollfds, i) != 0)
     {
-        printf("failed to delete socket %d from pollfds\n", client);
+        printf("failed to delete fd %d from pollfd array\n", client);
         return -1;
     }
 
-    if (user_table_delete(client, user_table) != 0)
+    if (user_table_delete(user_table, client) != 0)
     {
         printf("failed to delete user %d\n", client);
         return -1;
@@ -297,13 +297,13 @@ int main()
 
     if ((pollfds = pollfd_array_init()) == NULL)
     {
-        printf("failed to initialize pollfds\n");
+        printf("failed to initialize pollfd array\n");
         exit(EXIT_FAILURE);
     }
 
-    if (pollfd_array_append(listener, POLLIN, pollfds) != 0)
+    if (pollfd_array_append(pollfds, listener, POLLIN) != 0)
     {
-        printf("failed to append listener socket to pollfds");
+        printf("failed to append listener socket to pollfd array");
         exit(EXIT_FAILURE);
     }
 
@@ -328,7 +328,7 @@ int main()
                     printf("failed to close connection to socket %d\n", sockfd);
                     exit(EXIT_FAILURE);
                 }
-                i--; // repeat same index because last element in pollfds has taken its place
+                i--; // repeat same index because last element in pollfd array has taken its place
                 continue;
             }
 
@@ -352,7 +352,7 @@ int main()
                             printf("failed to close connection to socket %d\n", sockfd);
                             exit(EXIT_FAILURE);
                         }
-                        i--; // repeat same index because last element in pollfds has taken its place
+                        i--; // repeat same index because last element in pollfd array has taken its place
                     }
                     else if (status == -1)
                     {

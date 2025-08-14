@@ -243,19 +243,19 @@ int main()
 
     if ((pollfds = pollfd_array_init()) == NULL)
     {
-        printf("failed to initialize pollfds\n");
+        printf("failed to initialize array of pollfds\n");
         exit(EXIT_FAILURE);
     }
 
-    if (pollfd_array_append(server, POLLIN, pollfds) != 0)
+    if (pollfd_array_append(pollfds, server, POLLIN) != 0)
     {
-        printf("failed to append socket to pollfds");
+        printf("failed to append server fd to pollfd array");
         exit(EXIT_FAILURE);
     }
 
-    if (pollfd_array_append(STDIN_FILENO, POLLIN, pollfds) != 0)
+    if (pollfd_array_append(pollfds, STDIN_FILENO, POLLIN) != 0)
     {
-        printf("failed to append stdin to pollfds\n");
+        printf("failed to append stdin fd to pollfd array\n");
         exit(EXIT_FAILURE);
     }
 
