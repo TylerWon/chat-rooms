@@ -12,6 +12,7 @@
 #include "data_structures/pollfd_array.h"
 #include "data_structures/user_table.h"
 #include "messages/chat_message.h"
+#include "messages/message.h"
 #include "utils/net_utils.h"
 #include "utils/sockaddr_utils.h"
 
@@ -148,11 +149,103 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
 }
 
 /**
+ * Handles a chat message from a client.
+ *
+ * A client sends this kind of message when it wants to send a message to the chat room they are in. As a result, this
+ * function will take their message and send it to all other clients in the room.
+ *
+ * @param listener      The listener socket
+ * @param buf           Pointer to a char buffer containing the message
+ * @param user          Pointer to the user data for the client
+ * @param pollfds       Pointer to an array containing all open socket fds
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_chat_message(int listener, char *buf, struct user *user, struct pollfd_array *pollfds)
+{
+    struct chat_message msg;
+    if (chat_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    printf("deserialized message\n");
+
+    time(&msg.timestamp);
+    strcpy(msg.name, user->name);
+
+    printf("added name and timestamp to message\n");
+
+    char *send_buf;
+    size_t len;
+    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    for (uint32_t i = 0; i < pollfds->len; i++)
+    {
+        int receiver = pollfds->fds[i].fd;
+
+        if (receiver == listener)
+            continue;
+
+        if (sendall(receiver, send_buf, len) == -1)
+        {
+            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
+            free(send_buf);
+            return -1;
+        }
+    }
+    free(send_buf);
+
+    printf("sent message to all other clients\n");
+
+    return 0;
+}
+/**
+ * Handles a name message from a client.
+ *
+ * A client sends this kind of message when it wants to update their name. As a result, this function will update their
+ * name then send a name message back to the client to inform them that the update was successful.
+ *
+ * @param buf   Pointer to a char buffer containing the message
+ * @param len   The length of the buffer in bytes
+ * @param user  Pointer to the user data for the client
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_name_message(char *buf, size_t len, struct user *user)
+{
+    struct name_message msg;
+    if (name_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    printf("deserialized message\n");
+
+    strcpy(user->name, msg.name);
+    printf("set name of user %d to %s\n", user->id, user->name);
+
+    if (sendall(user->id, buf, len) == -1)
+        printf("failed to tell client %d that user name was updated\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
+
+    return 0;
+}
+
+/**
  * Handles a message from a client.
  *
- * - Receives the message from the client socket
- * - Adds a timestamp and the client's name to the message
- * - Sends the message to all open sockets (except for the listener socket)
+ * - Receives message from the server
+ * - Determines the type of message and handles it accordingly
  *
  * @param listener      The listener socket
  * @param client        The client socket to receive the message from
@@ -180,16 +273,6 @@ int handle_client_message(int listener, int client, struct user **user_table, st
 
     printf("received message\n");
 
-    struct chat_message msg;
-    if (chat_message_deserialize(recv_buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
-    free(recv_buf);
-
-    printf("deserialized message\n");
-
     struct user *user = user_table_find(user_table, client);
     if (user == NULL)
     {
@@ -197,37 +280,30 @@ int handle_client_message(int listener, int client, struct user **user_table, st
         return -1;
     }
 
-    time(&msg.timestamp);
-    strcpy(msg.name, user->name);
-
-    printf("added name and timestamp to message\n");
-
-    char *send_buf;
-    size_t len;
-    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
+    switch (get_message_type(recv_buf))
     {
-        perror("failed to serialize the message");
-        return -1;
-    }
-
-    printf("serialized message\n");
-
-    for (uint32_t i = 0; i < pollfds->len; i++)
-    {
-        int receiver = pollfds->fds[i].fd;
-
-        if (receiver == listener)
-            continue;
-
-        if (sendall(receiver, send_buf, len) == -1)
+    case CHAT_MESSAGE:
+        if (handle_chat_message(listener, recv_buf, user, pollfds) != 0)
         {
-            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
+            printf("failed to handle chat message\n");
+            free(recv_buf);
             return -1;
         }
+        break;
+    case NAME_MESSAGE:
+        if (handle_name_message(recv_buf, recvd, user) != 0)
+        {
+            printf("failed to handle name message\n");
+            free(recv_buf);
+            return -1;
+        }
+        break;
+    default:
+        printf("invalid message type\n");
+        free(recv_buf);
+        return -1;
     }
-    free(send_buf);
-
-    printf("sent message to all open connections\n");
+    free(recv_buf);
 
     return 1;
 }

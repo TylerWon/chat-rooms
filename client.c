@@ -11,56 +11,11 @@
 
 #include "data_structures/pollfd_array.h"
 #include "messages/chat_message.h"
+#include "messages/message.h"
 #include "utils/net_utils.h"
 #include "utils/sockaddr_utils.h"
 
 #define COMMAND_SIZE_LIMIT 5
-
-/**
- * Clears previous line from terminal.
- */
-void clear_previous_line()
-{
-    printf("\033[A");  // Move cursor up one line
-    printf("\033[2K"); // Clear the entire line
-}
-
-/**
- * Executes the command in str if it is a valid command.
- *
- * Commands:
- * - /name [name] - Sets the user's name to [name]
- * - /exit - Exits the application
- *
- * @param str   The command
- */
-void execute_command(char *str)
-{
-    char command[COMMAND_SIZE_LIMIT];
-    if (sscanf(str, "/%5s", command) != 1)
-    {
-        printf("command not provided\n");
-        return;
-    }
-
-    if (strcmp(command, "name") == 0)
-    {
-        char new_name[NAME_SIZE_LIMIT];
-        if (sscanf(str, "/%5s %100s", command, new_name) != 2)
-        {
-            printf("name not provided\n");
-            return;
-        }
-    }
-    else if (strcmp(command, "exit") == 0)
-    {
-        exit(EXIT_SUCCESS);
-    }
-    else
-    {
-        printf("not a valid command\n");
-    }
-}
 
 /**
  * Gets the address info of the server for the given port and stores it in res. The server runs on the same host as the
@@ -125,36 +80,107 @@ int create_socket(struct addrinfo *addr)
 }
 
 /**
- * Handles input from the user.
+ * Clears previous line from terminal.
+ */
+void clear_previous_line()
+{
+    printf("\033[A");  // Move cursor up one line
+    printf("\033[2K"); // Clear the entire line
+}
+
+/**
+ * Sends a name entered by the user to the server. The server will update the user's display name with this.
  *
- * - If input is a command: executes the command
- * - Otherwise, input is a message so sends it to the server
+ * @param server    The server socket.
+ * @param text      Pointer to a char buffer containing the name.
+ */
+int send_name_message(int server, char *name)
+{
+    struct name_message msg;
+    strcpy(msg.name, name);
+
+    char *send_buf;
+    size_t len;
+    if (name_message_serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    if (sendall(server, send_buf, len) == -1)
+    {
+        perror("failed to send message");
+        free(send_buf);
+        return -1;
+    }
+    free(send_buf);
+
+    printf("sent message\n");
+
+    return 0;
+}
+
+/**
+ * Executes the command in str if it is a valid command.
  *
- * @param server  The server socket
+ * Commands:
+ * - /name [name] - Sets the user's name to [name]
+ * - /exit - Exits the application
+ *
+ * @param str       The command
+ * @param server    The server socket
+ */
+void execute_command(char *str, int server)
+{
+    char command[COMMAND_SIZE_LIMIT];
+    if (sscanf(str, "/%5s", command) != 1)
+    {
+        printf("command not provided\n");
+        return;
+    }
+
+    if (strcmp(command, "name") == 0)
+    {
+        char new_name[NAME_SIZE_LIMIT];
+        if (sscanf(str, "/%5s %100s", command, new_name) != 2)
+        {
+            printf("name not provided\n");
+            return;
+        }
+        if (send_name_message(server, new_name) != 0)
+        {
+            printf("failed to set name\n");
+            return;
+        }
+    }
+    else if (strcmp(command, "exit") == 0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        printf("not a valid command\n");
+    }
+}
+
+/**
+ * Sends text entered by the user to the server. The text will be sent to all other users in the same room as the client.
+ *
+ * @param server    The server socket.
+ * @param text      Pointer to a char buffer containing the user's input.
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int handle_input(int server)
+int send_chat_message(int server, char *text)
 {
-    // Only the text field of message gets set by the client so initialize struct with 0s to avoid uninitialized value
-    // error for other fields when serializing
+    // Only the text field of the chat_message gets set by the client so initialize struct with 0s to avoid
+    // uninitialized value error for other fields when serializing
     struct chat_message msg;
     memset(&msg, 0, sizeof(msg));
-    if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
-    {
-        perror("failed to read user input");
-        return -1;
-    }
-    clear_previous_line();
-
-    printf("read input\n");
-
-    if (strncmp(msg.text, "/", 1) == 0)
-    {
-        execute_command(msg.text);
-        return 0;
-    }
+    strcpy(msg.text, text);
 
     char *send_buf;
     size_t len;
@@ -169,6 +195,7 @@ int handle_input(int server)
     if (sendall(server, send_buf, len) == -1)
     {
         perror("failed to send message");
+        free(send_buf);
         return -1;
     }
     free(send_buf);
@@ -179,10 +206,95 @@ int handle_input(int server)
 }
 
 /**
+ * Handles input from the user.
+ *
+ * If input is a command, executes the command. Otherwise, input is a message so sends it to the server.
+ *
+ * @param server  The server socket
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_input(int server)
+{
+    char buf[TEXT_SIZE_LIMIT];
+    if (fgets(buf, sizeof(buf), stdin) == NULL)
+    {
+        perror("failed to read user input");
+        return -1;
+    }
+    clear_previous_line();
+
+    if (strncmp(buf, "/", 1) == 0)
+    {
+        execute_command(buf, server);
+        return 0;
+    }
+
+    if (send_chat_message(server, buf) != 0)
+    {
+        printf("failed to send chat message\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Handles a chat message from the server.
+ *
+ * The server sends this kind of message when someone has sent a message to the chat room the client is in. As a result,
+ * this function will print message to the terminal.
+ *
+ * @param buf   Pointer to a char buffer containing the chat_message
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_chat_message(char *buf)
+{
+    struct chat_message msg;
+    if (chat_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    chat_message_print(&msg);
+
+    return 0;
+}
+
+/**
+ * Handles a name message from the server.
+ *
+ * The server sends this kind of message when it has successfully updated the client's name to the one they provided in
+ * the /name command. As a result, this function will print a message to the terminal to indicate this.
+ *
+ * @param buf   Pointer to a char buffer containing the name_message
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_name_message(char *buf)
+{
+    struct name_message msg;
+    if (name_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    printf("set name to %s\n ", msg.name);
+
+    return 0;
+}
+
+/**
  * Handles a message from the server.
  *
  * - Receives message from the server
- * - Prints it to the terminal
+ * - Determines the type of message and handles it accordingly
  *
  * @param server  The server socket
  *
@@ -206,15 +318,30 @@ int handle_server_message(int server)
 
     printf("received message\n");
 
-    struct chat_message msg;
-    if (chat_message_deserialize(recv_buf, &msg) != 0)
+    switch (get_message_type(recv_buf))
     {
-        perror("failed to deserialize the message");
+    case CHAT_MESSAGE:
+        if (handle_chat_message(recv_buf) != 0)
+        {
+            printf("failed to handle chat message\n");
+            free(recv_buf);
+            return -1;
+        }
+        break;
+    case NAME_MESSAGE:
+        if (handle_name_message(recv_buf) != 0)
+        {
+            printf("failed to handle name message\n");
+            free(recv_buf);
+            return -1;
+        }
+        break;
+    default:
+        printf("invalid message type\n");
+        free(recv_buf);
         return -1;
     }
     free(recv_buf);
-
-    chat_message_print(&msg);
 
     return 0;
 }
