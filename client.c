@@ -9,10 +9,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "data_structures/pollfd_array.h"
 #include "messages/chat_message.h"
-#include "net_utils.h"
-#include "pollfd_array.h"
-#include "sockaddr_utils.h"
+#include "utils/net_utils.h"
+#include "utils/sockaddr_utils.h"
 
 #define COMMAND_SIZE_LIMIT 5
 

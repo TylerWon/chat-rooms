@@ -1,8 +1,8 @@
 #include <poll.h>
 #include <stdint.h>
 
-#include "messages/chat_message.h"
-#include "uthash.h"
+#include "../messages/chat_message.h"
+#include "../lib/uthash.h"
 
 // Represents a user
 struct user

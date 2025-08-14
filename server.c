@@ -9,11 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "data_structures/pollfd_array.h"
+#include "data_structures/user_table.h"
 #include "messages/chat_message.h"
-#include "net_utils.h"
-#include "pollfd_array.h"
-#include "sockaddr_utils.h"
-#include "user_table.h"
+#include "utils/net_utils.h"
+#include "utils/sockaddr_utils.h"
 
 #define BACKLOG_LIMIT 10
 
