@@ -3,11 +3,11 @@
 
 #include <stddef.h>
 
+#include "name_message.h"
+
 typedef int64_t TIMESTAMP;
-typedef uint8_t NAME_LEN;
 typedef uint16_t TEXT_LEN;
 
-#define NAME_SIZE_LIMIT 50
 #define TEXT_SIZE_LIMIT 1000
 
 // Represents a message sent in a chat room
