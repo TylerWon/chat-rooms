@@ -9,7 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "message.h"
+#include "messages/chat_message.h"
 #include "net_utils.h"
 #include "pollfd_array.h"
 #include "sockaddr_utils.h"
@@ -139,7 +139,7 @@ int handle_input(int server)
 {
     // Only the text field of message gets set by the client so initialize struct with 0s to avoid uninitialized value
     // error for other fields when serializing
-    struct message msg;
+    struct chat_message msg;
     memset(&msg, 0, sizeof(msg));
     if (fgets(msg.text, sizeof(msg.text), stdin) == NULL)
     {
@@ -158,7 +158,7 @@ int handle_input(int server)
 
     char *send_buf;
     size_t len;
-    if (serialize(&msg, &send_buf, &len) != 0)
+    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
     {
         perror("failed to serialize the message");
         return -1;
@@ -206,15 +206,15 @@ int handle_server_message(int server)
 
     printf("received message\n");
 
-    struct message msg;
-    if (deserialize(recv_buf, &msg) != 0)
+    struct chat_message msg;
+    if (chat_message_deserialize(recv_buf, &msg) != 0)
     {
         perror("failed to deserialize the message");
         return -1;
     }
     free(recv_buf);
 
-    print_message(&msg);
+    chat_message_print(&msg);
 
     return 0;
 }

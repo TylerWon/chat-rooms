@@ -1,9 +1,8 @@
-#ifndef MESSAGE_H
-#define MESSAGE_H
+#ifndef CHAT_MESSAGE_H
+#define CHAT_MESSAGE_H
 
 #include <stddef.h>
 
-typedef uint32_t TOTAL_MSG_LEN;
 typedef int64_t TIMESTAMP;
 typedef uint8_t NAME_LEN;
 typedef uint16_t TEXT_LEN;
@@ -11,7 +10,8 @@ typedef uint16_t TEXT_LEN;
 #define NAME_SIZE_LIMIT 50
 #define TEXT_SIZE_LIMIT 1000
 
-struct message
+// Represents a message sent in a chat room
+struct chat_message
 {
     TIMESTAMP timestamp;
     char name[NAME_SIZE_LIMIT];
@@ -19,11 +19,12 @@ struct message
 };
 
 /**
- * Serializes a message to be sent the client/server into a buffer. The buffer should be freed when it is no longer
+ * Serializes a chat message so it can be sent to the client/server. The buffer should be freed when it is no longer
  * needed.
  *
  * Message structure:
  * - message length (4 bytes)
+ * - message type (1 byte)
  * - timestamp (4 bytes)
  * - name length (1 byte)
  * - name (max 50 bytes)
@@ -37,13 +38,14 @@ struct message
  * @return  0 on success.
  *          -1 on error (errno is set appropriately).
  */
-int serialize(struct message *msg, char **buf, size_t *len);
+int chat_message_serialize(struct chat_message *msg, char **buf, size_t *len);
 
 /**
- * Deserializes a message received from the client/server from a buffer.
+ * Deserializes a chat message received from the client/server.
  *
  * Message structure:
  * - message length (4 bytes)
+ * - message type (1 byte)
  * - timestamp (4 bytes)
  * - name length (1 byte)
  * - name (max 50 bytes)
@@ -56,7 +58,7 @@ int serialize(struct message *msg, char **buf, size_t *len);
  * @return  0 on success.
  *          -1 on error (errno is set appropriately).
  */
-int deserialize(char *buf, struct message *msg);
+int chat_message_deserialize(char *buf, struct chat_message *msg);
 
 /**
  * Prints a message in the format: (hh:mm) [name]: [message].
@@ -65,6 +67,6 @@ int deserialize(char *buf, struct message *msg);
  *
  * @param msg   The message to print
  */
-void print_message(struct message *msg);
+void chat_message_print(struct chat_message *msg);
 
 #endif

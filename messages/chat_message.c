@@ -6,8 +6,9 @@
 #include <time.h>
 
 #include "message.h"
+#include "chat_message.h"
 
-int serialize(struct message *msg, char **buf, size_t *len)
+int chat_message_serialize(struct chat_message *msg, char **buf, size_t *len)
 {
     if (msg == NULL || buf == NULL || len == NULL)
         return -1;
@@ -15,7 +16,7 @@ int serialize(struct message *msg, char **buf, size_t *len)
     // Determine total message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
     TEXT_LEN text_len = strlen(msg->text) + 1; // +1 for null character
-    TOTAL_MSG_LEN total_len = sizeof(TOTAL_MSG_LEN) + sizeof(msg->timestamp) + sizeof(NAME_LEN) + name_len + sizeof(TEXT_LEN) + text_len;
+    TOTAL_MSG_LEN total_len = sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE) + sizeof(msg->timestamp) + sizeof(NAME_LEN) + name_len + sizeof(TEXT_LEN) + text_len;
     *len = total_len;
 
     // Allocate space for the buffer
@@ -29,6 +30,11 @@ int serialize(struct message *msg, char **buf, size_t *len)
     TOTAL_MSG_LEN total_len_nbe = htonl(total_len);
     memcpy(b, &total_len_nbe, sizeof(total_len_nbe));
     b += sizeof(total_len_nbe);
+
+    // Write message type
+    MSG_TYPE msg_type = CHAT_MESSAGE;
+    memcpy(b, &msg_type, sizeof(msg_type));
+    b += sizeof(msg_type);
 
     // Write timestamp
     TIMESTAMP timestamp_nbe = htonl(msg->timestamp);
@@ -54,13 +60,13 @@ int serialize(struct message *msg, char **buf, size_t *len)
     return 0;
 }
 
-int deserialize(char *buf, struct message *msg)
+int chat_message_deserialize(char *buf, struct chat_message *msg)
 {
     if (buf == NULL || msg == NULL)
         return -1;
 
-    // Skip over total message length
-    buf += sizeof(TOTAL_MSG_LEN);
+    // Skip over total message length and message type
+    buf += sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE);
 
     // Get timestamp
     TIMESTAMP timestamp = ntohl(*(TIMESTAMP *)buf);
@@ -85,7 +91,7 @@ int deserialize(char *buf, struct message *msg)
     return 0;
 }
 
-void print_message(struct message *msg)
+void chat_message_print(struct chat_message *msg)
 {
     struct tm *sent_timestamp = localtime(&msg->timestamp);
     printf("(%02d:%02d) %s: %s", sent_timestamp->tm_hour, sent_timestamp->tm_min, msg->name, msg->text);

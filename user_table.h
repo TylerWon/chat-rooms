@@ -1,7 +1,7 @@
 #include <poll.h>
 #include <stdint.h>
 
-#include "message.h"
+#include "messages/chat_message.h"
 #include "uthash.h"
 
 // Represents a user

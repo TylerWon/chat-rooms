@@ -9,7 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "message.h"
+#include "messages/chat_message.h"
 #include "net_utils.h"
 #include "pollfd_array.h"
 #include "sockaddr_utils.h"
@@ -180,8 +180,8 @@ int handle_client_message(int listener, int client, struct user **user_table, st
 
     printf("received message\n");
 
-    struct message msg;
-    if (deserialize(recv_buf, &msg) != 0)
+    struct chat_message msg;
+    if (chat_message_deserialize(recv_buf, &msg) != 0)
     {
         perror("failed to deserialize the message");
         return -1;
@@ -204,7 +204,7 @@ int handle_client_message(int listener, int client, struct user **user_table, st
 
     char *send_buf;
     size_t len;
-    if (serialize(&msg, &send_buf, &len) != 0)
+    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
     {
         perror("failed to serialize the message");
         return -1;
