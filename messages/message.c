@@ -10,6 +10,8 @@ enum MessageType get_message_type(char *buf)
         return CHAT_MESSAGE;
     case NAME_MESSAGE:
         return NAME_MESSAGE;
+    case REPLY_MESSAGE:
+        return REPLY_MESSAGE;
     default:
         return INVALID_MESSAGE;
     }

@@ -1,7 +1,6 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include "message.h"
 #include "name_message.h"

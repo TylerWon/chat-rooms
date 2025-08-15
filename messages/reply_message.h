@@ -1,24 +1,23 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef uint8_t NAME_LEN;
+typedef uint8_t REPLY_LEN;
 
-#define NAME_SIZE_LIMIT 50
+#define REPLY_SIZE_LIMIT 100
 
-struct name_message
+struct reply_message
 {
-    char name[NAME_SIZE_LIMIT];
+    char reply[REPLY_SIZE_LIMIT];
 };
 
 /**
- * Serializes a name message so it can be sent to the client/server. The buffer should be freed when it is no longer
- * needed.
+ * Serializes a reply message so it can be sent to the client. The buffer should be freed when it is no longer needed.
  *
  * Message structure:
  * - message length (4 bytes)
  * - message type (1 byte)
- * - name length (1 byte)
- * - name (max 50 bytes)
+ * - reply length (1 byte)
+ * - reply (max 100 bytes)
  *
  * @param msg   The message to serialize
  * @param buf   Double pointer to a char buffer which will store the serialized message
@@ -27,16 +26,16 @@ struct name_message
  * @return  0 on success.
  *          -1 on error (errno is set appropriately).
  */
-int name_message_serialize(struct name_message *msg, char **buf, size_t *len);
+int reply_message_serialize(struct reply_message *msg, char **buf, size_t *len);
 
 /**
- * Deserializes a name message received from the client/server.
+ * Deserializes a reply message received from the client/server.
  *
  * Message structure:
  * - message length (4 bytes)
  * - message type (1 byte)
- * - name length (1 byte)
- * - name (max 50 bytes)
+ * - reply length (1 byte)
+ * - reply (max 100 bytes)
  *
  * @param buf   Pointer to a char buffer which contains the message
  * @param msg   Pointer to a message which will store the deserialized message
@@ -44,4 +43,4 @@ int name_message_serialize(struct name_message *msg, char **buf, size_t *len);
  * @return  0 on success.
  *          -1 on error (errno is set appropriately).
  */
-int name_message_deserialize(char *buf, struct name_message *msg);
+int reply_message_deserialize(char *buf, struct reply_message *msg);

@@ -12,6 +12,7 @@
 #include "data_structures/pollfd_array.h"
 #include "messages/chat_message.h"
 #include "messages/message.h"
+#include "messages/reply_message.h"
 #include "utils/net_utils.h"
 #include "utils/sockaddr_utils.h"
 
@@ -246,7 +247,7 @@ int handle_input(int server)
  * The server sends this kind of message when someone has sent a message to the chat room the client is in. As a result,
  * this function will print message to the terminal.
  *
- * @param buf   Pointer to a char buffer containing the chat_message
+ * @param buf   Pointer to a char buffer containing the message
  *
  * @return  0 on success.
  *          -1 on error.
@@ -266,26 +267,23 @@ int handle_chat_message(char *buf)
 }
 
 /**
- * Handles a name message from the server.
+ * Handles a reply message from the server.
  *
- * The server sends this kind of message when it has successfully updated the client's name to the one they provided in
- * the /name command. As a result, this function will print a message to the terminal to indicate this.
- *
- * @param buf   Pointer to a char buffer containing the name_message
+ * @param buf   Pointer to a char buffer containing the message
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int handle_name_message(char *buf)
+int handle_reply_message(char *buf)
 {
-    struct name_message msg;
-    if (name_message_deserialize(buf, &msg) != 0)
+    struct reply_message msg;
+    if (reply_message_deserialize(buf, &msg) != 0)
     {
         perror("failed to deserialize the message");
         return -1;
     }
 
-    printf("set name to %s\n ", msg.name);
+    printf("%s\n", msg.reply);
 
     return 0;
 }
@@ -328,10 +326,10 @@ int handle_server_message(int server)
             return -1;
         }
         break;
-    case NAME_MESSAGE:
-        if (handle_name_message(recv_buf) != 0)
+    case REPLY_MESSAGE:
+        if (handle_reply_message(recv_buf) != 0)
         {
-            printf("failed to handle name message\n");
+            printf("failed to handle reply message\n");
             free(recv_buf);
             return -1;
         }

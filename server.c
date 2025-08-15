@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 #include "data_structures/user_table.h"
 #include "messages/chat_message.h"
 #include "messages/message.h"
+#include "messages/reply_message.h"
 #include "utils/net_utils.h"
 #include "utils/sockaddr_utils.h"
 
@@ -208,25 +210,71 @@ int handle_chat_message(int listener, char *buf, struct user *user, struct pollf
 
     return 0;
 }
+
+/**
+ * Sends a reply from the server to the client.
+ *
+ * @param client    The client socket
+ * @param reply     The reply which may contain format specifiers
+ * @param ...       Value(s) for format specifier(s) (if any)
+ */
+int send_reply_message(int client, char *reply, ...)
+{
+    // Fill in format specifiers with values
+    va_list args;
+    va_start(args, reply); // Initialize args with the variable arguments starting after "reply"
+
+    char total_reply[REPLY_SIZE_LIMIT];
+    if (vsnprintf(total_reply, sizeof(total_reply), reply, args) >= (int)sizeof(total_reply))
+        printf("Reply message truncated: %s\n", total_reply);
+
+    va_end(args);
+
+    struct reply_message msg;
+    strcpy(msg.reply, total_reply);
+
+    char *send_buf;
+    size_t len;
+    if (reply_message_serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    if (sendall(client, send_buf, len) == -1)
+    {
+        perror("failed to send message");
+        free(send_buf);
+        return -1;
+    }
+    free(send_buf);
+
+    printf("sent message\n");
+
+    return 0;
+}
+
 /**
  * Handles a name message from a client.
  *
  * A client sends this kind of message when it wants to update their name. As a result, this function will update their
- * name then send a name message back to the client to inform them that the update was successful.
+ * name then send a message back to the client to inform them that the update was successful.
  *
  * @param buf   Pointer to a char buffer containing the message
- * @param len   The length of the buffer in bytes
  * @param user  Pointer to the user data for the client
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int handle_name_message(char *buf, size_t len, struct user *user)
+int handle_name_message(char *buf, struct user *user)
 {
     struct name_message msg;
     if (name_message_deserialize(buf, &msg) != 0)
     {
         perror("failed to deserialize the message");
+        send_reply_message(user->id, "failed to set name");
         return -1;
     }
 
@@ -235,8 +283,8 @@ int handle_name_message(char *buf, size_t len, struct user *user)
     strcpy(user->name, msg.name);
     printf("set name of user %d to %s\n", user->id, user->name);
 
-    if (sendall(user->id, buf, len) == -1)
-        printf("failed to tell client %d that user name was updated\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
+    if (send_reply_message(user->id, "set name to %s", msg.name) != 0)
+        printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
 
     return 0;
 }
@@ -291,7 +339,7 @@ int handle_client_message(int listener, int client, struct user **user_table, st
         }
         break;
     case NAME_MESSAGE:
-        if (handle_name_message(recv_buf, recvd, user) != 0)
+        if (handle_name_message(recv_buf, user) != 0)
         {
             printf("failed to handle name message\n");
             free(recv_buf);

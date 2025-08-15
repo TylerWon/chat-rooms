@@ -7,7 +7,8 @@ enum MessageType
 {
     CHAT_MESSAGE,
     NAME_MESSAGE,
-    INVALID_MESSAGE
+    INVALID_MESSAGE,
+    REPLY_MESSAGE,
 };
 
 /**
