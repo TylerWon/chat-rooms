@@ -15,14 +15,13 @@ struct room
 };
 
 /**
- * Adds a user to the room. Returns an error if the room is full or user is already in a room.
+ * Adds a user to the room. Returns an error if the room is full.
  *
  * @param room      Pointer to the room
  * @param user_id   Id of the user
  *
  * @return  0 on success.
- *          -1 if the room is full.
- *          -2 if the user is already in a room.
+ *          -1 on error.
  */
 int room_add_user(struct room *room, struct user *user);
 

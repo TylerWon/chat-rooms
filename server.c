@@ -311,23 +311,21 @@ void handle_join_message(char *buf, struct room_array *rooms, struct user *user)
         return;
     }
 
-    if (user->room != INVALID_ROOM)
+    if (user->room == new_room->id)
+    {
+        printf("user %d already in room %d\n", user->id, new_room->id);
+        send_reply_message(user->id, "you are already in room %d", new_room->id);
+    }
+    else if (user->room != INVALID_ROOM)
     {
         struct room *current_room = room_array_get_room(rooms, user->room);
         room_remove_user(current_room, user);
     }
 
-    int status = room_add_user(new_room, user);
-    if (status == -1)
+    if (room_add_user(new_room, user) != 0)
     {
         printf("room %d is full\n", new_room->id);
         send_reply_message(user->id, "room %d is full", new_room->id);
-        return;
-    }
-    else if (status == -2)
-    {
-        printf("user %d is already in a room\n", user->id);
-        send_reply_message(user->id, "you are already in a room", new_room->id);
         return;
     }
 
@@ -402,25 +400,42 @@ int handle_client_message(int client, struct user **user_table, struct room_arra
 /**
  * Handles terminiation of a client.
  *
- * - Removes the socket fd from the array of socket fds
- * - Removes the user associated with the client from the hash table of users
+ * - Removes the client's socket fd from the array of socket fds
+ * - Removes the client from the room they were in (if they were in one)
+ * - Removes the user data associated with the client from the hash table of users
  * - Closes the connection to the given client
  *
  * @param client        The client socket to close
  * @param i             The index of the socket fd in pollfds
  * @param pollfds       Pointer to an array containing all open socket fds
+ * @param rooms         Pointer to an array containing all open chat rooms
  * @param user_table    Double pointer to a hash table containing all users
  *
  * @return  0 on success.
  *          -1 on error.
  */
-int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollfds, struct user **user_table)
+int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollfds, struct room_array *rooms, struct user **user_table)
 {
     if (pollfd_array_delete(pollfds, i) != 0)
     {
         printf("failed to delete fd %d from pollfd array\n", client);
         return -1;
     }
+
+    struct user *user = user_table_find(user_table, client);
+    if (user == NULL)
+    {
+        printf("user %d not found\n", client);
+        return -1;
+    }
+
+    struct room *room = room_array_get_room(rooms, user->room);
+    if (room != NULL)
+        if (room_remove_user(room, user) != 0)
+        {
+            printf("failed to remove user %d from room %d\n", user->id, room->id);
+            return -1;
+        }
 
     if (user_table_delete(user_table, client) != 0)
     {
@@ -485,7 +500,7 @@ int main()
 
             if (revents & POLLHUP)
             {
-                if (handle_client_termination(sockfd, i, pollfds, &user_table) != 0)
+                if (handle_client_termination(sockfd, i, pollfds, rooms, &user_table) != 0)
                 {
                     printf("failed to close connection to socket %d\n", sockfd);
                     exit(EXIT_FAILURE);
@@ -509,7 +524,7 @@ int main()
                     int status = handle_client_message(sockfd, &user_table, rooms);
                     if (status == 0)
                     {
-                        if (handle_client_termination(sockfd, i, pollfds, &user_table) != 0)
+                        if (handle_client_termination(sockfd, i, pollfds, rooms, &user_table) != 0)
                         {
                             printf("failed to close connection to socket %d\n", sockfd);
                             exit(EXIT_FAILURE);

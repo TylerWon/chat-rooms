@@ -6,8 +6,6 @@ int room_add_user(struct room *room, struct user *user)
 {
     if (room->num_users == MAX_USERS_PER_ROOM)
         return -1;
-    else if (user->room != INVALID_ROOM)
-        return -2;
 
     room->users[room->num_users] = user->id;
     room->num_users++;
