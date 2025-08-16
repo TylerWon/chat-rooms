@@ -2,9 +2,9 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g -MMD -MP
 
 # Find all source files
-SRC_COMMON := $(wildcard data_structures/*.c messages/*.c types/*.c utils/*.c)
+SRC_COMMON := $(wildcard data_structures/*.c types/*.c types/messages/*.c utils/*.c)
 SRC_CLIENT := client.c $(SRC_COMMON)
-SRC_SERVER := server.c data_structures/user_table.c $(SRC_COMMON)
+SRC_SERVER := server.c $(SRC_COMMON)
 
 # Convert .c -> .o
 OBJS_CLIENT := $(patsubst %.c, %.o, $(SRC_CLIENT))

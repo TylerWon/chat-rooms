@@ -1,3 +1,6 @@
+#ifndef NAME_MESSAGE_H
+#define NAME_MESSAGE_H
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -45,3 +48,5 @@ int name_message_serialize(struct name_message *msg, char **buf, size_t *len);
  *          -1 on error (errno is set appropriately).
  */
 int name_message_deserialize(char *buf, struct name_message *msg);
+
+#endif

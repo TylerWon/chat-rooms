@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "../lib/uthash.h"
 #include "user_table.h"
 
 int user_table_add(struct user **user_table, int id)

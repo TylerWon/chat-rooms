@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../messages/message.h"
+#include "../types/messages/message.h"
 #include "net_utils.h"
 
 ssize_t sendall(int sockfd, char *buf, size_t len)

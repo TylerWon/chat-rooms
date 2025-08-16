@@ -10,9 +10,10 @@
 #include <unistd.h>
 
 #include "data_structures/pollfd_array.h"
-#include "messages/chat_message.h"
-#include "messages/message.h"
-#include "messages/reply_message.h"
+#include "types/messages/chat_message.h"
+#include "types/messages/name_message.h"
+#include "types/messages/message.h"
+#include "types/messages/reply_message.h"
 #include "utils/net_utils.h"
 #include "utils/sockaddr_utils.h"
 
