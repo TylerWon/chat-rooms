@@ -323,29 +323,35 @@ int handle_join_message(char *buf, struct room_array *rooms, struct user *user)
 
     printf("deserialized message\n");
 
-    struct room *room = room_array_get_room(rooms, msg.room_id);
-    if (room == NULL)
+    struct room *new_room = room_array_get_room(rooms, msg.room_id);
+    if (new_room == NULL)
     {
         printf("room %d does not exist\n", msg.room_id);
         send_reply_message(user->id, "room %d does not exist", msg.room_id);
         return 0;
     }
 
-    int status = room_add_user(room, user);
+    if (user->room != INVALID_ROOM)
+    {
+        struct room *current_room = room_array_get_room(rooms, user->room);
+        room_remove_user(current_room, user);
+    }
+
+    int status = room_add_user(new_room, user);
     if (status == -1)
     {
-        printf("room %d is full\n", room->id);
-        send_reply_message(user->id, "room %d is full", room->id);
+        printf("room %d is full\n", new_room->id);
+        send_reply_message(user->id, "room %d is full", new_room->id);
         return 0;
     }
     else if (status == -2)
     {
         printf("user %d is already in a room\n", user->id);
-        send_reply_message(user->id, "you are already in a room: type '/leave' leave to leave your current room", room->id);
+        send_reply_message(user->id, "you are already in a room", new_room->id);
         return 0;
     }
 
-    if (send_reply_message(user->id, "you have joined room %d", room->id) != 0)
+    if (send_reply_message(user->id, "you have joined room %d", new_room->id) != 0)
         printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
 
     return 0;
