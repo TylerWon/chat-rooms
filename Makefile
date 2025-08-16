@@ -1,15 +1,19 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g -MMD -MP  # -MMD generates .d files, -MP avoids errors if headers are deleted
+CFLAGS = -Wall -Wextra -g -MMD -MP
 
-# Object files
-OBJS_COMMON = data_structures/pollfd_array.o data_structures/room_array.o messages/chat_message.o messages/message.o messages/name_message.o messages/reply_message.o types/room.o utils/net_utils.o utils/sockaddr_utils.o
-OBJS_CLIENT = client.o $(OBJS_COMMON)
-OBJS_SERVER = server.o data_structures/user_table.o $(OBJS_COMMON)
+# Find all source files
+SRC_COMMON := $(wildcard data_structures/*.c messages/*.c types/*.c utils/*.c)
+SRC_CLIENT := client.c $(SRC_COMMON)
+SRC_SERVER := server.c data_structures/user_table.c $(SRC_COMMON)
+
+# Convert .c -> .o
+OBJS_CLIENT := $(patsubst %.c, %.o, $(SRC_CLIENT))
+OBJS_SERVER := $(patsubst %.c, %.o, $(SRC_SERVER))
 
 # Default target
 all: client server
 
-# Pattern rule for building .o files from .c files
+# Pattern rule
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -22,5 +26,5 @@ server: $(OBJS_SERVER)
 clean:
 	rm -f *.o */*.o client server *.d */*.d
 
-# Include auto-generated dependency files
+# Auto dependencies
 -include $(OBJS_CLIENT:.o=.d) $(OBJS_SERVER:.o=.d)
