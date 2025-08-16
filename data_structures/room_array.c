@@ -5,16 +5,24 @@
 
 struct room_array *room_array_init(int n)
 {
-    struct room_array *room_array = calloc(n, sizeof(struct room));
+    struct room_array *room_array = malloc(sizeof(struct room_array));
     if (room_array == NULL)
         return NULL;
 
-    for (int i = 0; i < n; i++)
+    struct room *rooms = calloc(n, sizeof(struct room));
+    if (rooms == NULL)
+    {
+        free(room_array);
+        return NULL;
+    }
+    room_array->rooms = rooms;
+    room_array->len = n;
+
+    for (int i = 0; i < room_array->len; i++)
     {
         room_array->rooms[i].id = i + 1; // room 1 at index 0
         room_array->rooms[i].num_users = 0;
     }
-    room_array->len = n;
 
     return room_array;
 }

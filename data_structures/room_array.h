@@ -2,6 +2,7 @@
 
 #include "../types/room.h"
 
+// An array of rooms
 struct room_array
 {
     struct room *rooms;
