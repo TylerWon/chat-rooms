@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "../lib/uthash.h"
+#include "../types/room.h"
 #include "user_table.h"
 
 int user_table_add(struct user **user_table, int id)
@@ -21,6 +22,7 @@ int user_table_add(struct user **user_table, int id)
     }
 
     new_user->id = id;
+    new_user->room = INVALID_ROOM;
     strcpy(new_user->name, "anonymous");
     HASH_ADD_INT(*user_table, id, new_user);
 

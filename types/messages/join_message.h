@@ -1,3 +1,6 @@
+#ifndef JOIN_MESSAGE_H
+#define JOIN_MESSAGE_H
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,7 +12,7 @@ struct join_message
 };
 
 /**
- * Serializes a join message so it can be sent to the client/server. The buffer should be freed when it is no longer 
+ * Serializes a join message so it can be sent to the client/server. The buffer should be freed when it is no longer
  * needed.
  *
  * Message structure:
@@ -41,3 +44,5 @@ int join_message_serialize(struct join_message *msg, char **buf, size_t *len);
  *          -1 on error (errno is set appropriately).
  */
 int join_message_deserialize(char *buf, struct join_message *msg);
+
+#endif

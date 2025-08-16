@@ -24,7 +24,7 @@ server: $(OBJS_SERVER)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f *.o */*.o client server *.d */*.d
+	rm -f *.o */*.o */*/*.o client server *.d */*.d */*/*.d
 
 # Auto dependencies
 -include $(OBJS_CLIENT:.o=.d) $(OBJS_SERVER:.o=.d)

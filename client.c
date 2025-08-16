@@ -11,6 +11,7 @@
 
 #include "data_structures/pollfd_array.h"
 #include "types/messages/chat_message.h"
+#include "types/messages/join_message.h"
 #include "types/messages/name_message.h"
 #include "types/messages/message.h"
 #include "types/messages/reply_message.h"
@@ -95,6 +96,9 @@ void clear_previous_line()
  *
  * @param server    The server socket.
  * @param text      Pointer to a char buffer containing the name.
+ *
+ * @return  0 on success.
+ *          -1 on error.
  */
 int send_name_message(int server, char *name)
 {
@@ -104,6 +108,43 @@ int send_name_message(int server, char *name)
     char *send_buf;
     size_t len;
     if (name_message_serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    if (sendall(server, send_buf, len) == -1)
+    {
+        perror("failed to send message");
+        free(send_buf);
+        return -1;
+    }
+    free(send_buf);
+
+    printf("sent message\n");
+
+    return 0;
+}
+
+/**
+ * Sends a room id entered by the user to the server. The server will attempt to add the user to the chat room.
+ *
+ * @param server    The server socket.
+ * @param room_id   The id of the room the user wants to join.
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int send_join_message(int server, ROOM_ID room_id)
+{
+    struct join_message msg;
+    msg.room_id = room_id;
+
+    char *send_buf;
+    size_t len;
+    if (join_message_serialize(&msg, &send_buf, &len) != 0)
     {
         perror("failed to serialize the message");
         return -1;
@@ -154,6 +195,20 @@ void execute_command(char *str, int server)
         if (send_name_message(server, new_name) != 0)
         {
             printf("failed to set name\n");
+            return;
+        }
+    }
+    else if (strcmp(command, "join") == 0)
+    {
+        ROOM_ID room_id;
+        if (sscanf(str, "/%5s %hhd", command, &room_id) != 2)
+        {
+            printf("room id not provided\n");
+            return;
+        }
+        if (send_join_message(server, room_id) != 0)
+        {
+            printf("failed to join room\n");
             return;
         }
     }
@@ -347,8 +402,8 @@ int handle_server_message(int server)
 
 int main()
 {
-    struct pollfd_array *pollfds;
     int server;
+    struct pollfd_array *pollfds = pollfd_array_init();
 
     int status;
     struct addrinfo *res;
@@ -366,12 +421,6 @@ int main()
 
     freeaddrinfo(res);
     res = NULL;
-
-    if ((pollfds = pollfd_array_init()) == NULL)
-    {
-        printf("failed to initialize array of pollfds\n");
-        exit(EXIT_FAILURE);
-    }
 
     if (pollfd_array_append(pollfds, server, POLLIN) != 0)
     {

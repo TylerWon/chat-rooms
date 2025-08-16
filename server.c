@@ -11,8 +11,10 @@
 #include <unistd.h>
 
 #include "data_structures/pollfd_array.h"
+#include "data_structures/room_array.h"
 #include "data_structures/user_table.h"
 #include "types/messages/chat_message.h"
+#include "types/messages/join_message.h"
 #include "types/messages/name_message.h"
 #include "types/messages/message.h"
 #include "types/messages/reply_message.h"
@@ -20,6 +22,7 @@
 #include "utils/sockaddr_utils.h"
 
 #define BACKLOG_LIMIT 10
+#define NUM_ROOMS 5
 
 /**
  * Gets the address info of the server for the given port and stores it in res. The IP address will be the wildcard
@@ -152,72 +155,14 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
 }
 
 /**
- * Handles a chat message from a client.
- *
- * A client sends this kind of message when it wants to send a message to the chat room they are in. As a result, this
- * function will take their message and send it to all other clients in the room.
- *
- * @param listener      The listener socket
- * @param buf           Pointer to a char buffer containing the message
- * @param user          Pointer to the user data for the client
- * @param pollfds       Pointer to an array containing all open socket fds
- *
- * @return  0 on success.
- *          -1 on error.
- */
-int handle_chat_message(int listener, char *buf, struct user *user, struct pollfd_array *pollfds)
-{
-    struct chat_message msg;
-    if (chat_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
-
-    printf("deserialized message\n");
-
-    time(&msg.timestamp);
-    strcpy(msg.name, user->name);
-
-    printf("added name and timestamp to message\n");
-
-    char *send_buf;
-    size_t len;
-    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
-    {
-        perror("failed to serialize the message");
-        return -1;
-    }
-
-    printf("serialized message\n");
-
-    for (uint32_t i = 0; i < pollfds->len; i++)
-    {
-        int receiver = pollfds->fds[i].fd;
-
-        if (receiver == listener)
-            continue;
-
-        if (sendall(receiver, send_buf, len) == -1)
-        {
-            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
-            free(send_buf);
-            return -1;
-        }
-    }
-    free(send_buf);
-
-    printf("sent message to all other clients\n");
-
-    return 0;
-}
-
-/**
  * Sends a reply from the server to the client.
  *
  * @param client    The client socket
  * @param reply     The reply which may contain format specifiers
  * @param ...       Value(s) for format specifier(s) (if any)
+ *
+ * @return  0 on success.
+ *          -1 on error.
  */
 int send_reply_message(int client, char *reply, ...)
 {
@@ -227,7 +172,7 @@ int send_reply_message(int client, char *reply, ...)
 
     char total_reply[REPLY_SIZE_LIMIT];
     if (vsnprintf(total_reply, sizeof(total_reply), reply, args) >= (int)sizeof(total_reply))
-        printf("Reply message truncated: %s\n", total_reply);
+        printf("reply message truncated: %s\n", total_reply);
 
     va_end(args);
 
@@ -258,10 +203,75 @@ int send_reply_message(int client, char *reply, ...)
 }
 
 /**
+ * Handles a chat message from a client.
+ *
+ * A client sends this kind of message when it wants to send a message to the chat room they are in. As a result, this
+ * function will take their message and send it to all other clients in the room.
+ *
+ * @param buf           Pointer to a char buffer containing the message
+ * @param user          Pointer to the user data for the client
+ * @param rooms         Pointer to an array containing all open chat rooms
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
+{
+    if (user->room == INVALID_ROOM)
+    {
+        printf("user %d not in a room\n", user->room);
+        send_reply_message(user->id, "you are not in a chat room: type '/join [room number]' to join a room");
+        return 0;
+    }
+
+    struct chat_message msg;
+    if (chat_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    printf("deserialized message\n");
+
+    time(&msg.timestamp);
+    strcpy(msg.name, user->name);
+
+    printf("added name and timestamp to message\n");
+
+    char *send_buf;
+    size_t len;
+    if (chat_message_serialize(&msg, &send_buf, &len) != 0)
+    {
+        perror("failed to serialize the message");
+        return -1;
+    }
+
+    printf("serialized message\n");
+
+    struct room *room = room_array_get_room(rooms, user->room);
+    for (uint8_t i = 0; i < room->num_users; i++)
+    {
+        int receiver = room->users[i];
+
+        if (sendall(receiver, send_buf, len) == -1)
+        {
+            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
+            free(send_buf);
+            return -1;
+        }
+    }
+    free(send_buf);
+
+    printf("sent message to all other clients in room %d\n", room->id);
+
+    return 0;
+}
+
+/**
  * Handles a name message from a client.
  *
  * A client sends this kind of message when it wants to update their name. As a result, this function will update their
- * name then send a message back to the client to inform them that the update was successful.
+ * name then send a message back to inform them that the update was successful.
  *
  * @param buf   Pointer to a char buffer containing the message
  * @param user  Pointer to the user data for the client
@@ -275,7 +285,6 @@ int handle_name_message(char *buf, struct user *user)
     if (name_message_deserialize(buf, &msg) != 0)
     {
         perror("failed to deserialize the message");
-        send_reply_message(user->id, "failed to set name");
         return -1;
     }
 
@@ -291,21 +300,72 @@ int handle_name_message(char *buf, struct user *user)
 }
 
 /**
+ * Handles a join message from a client.
+ *
+ * A client sends this kind of message when it wants to join a room. As a result, this function will add them to the
+ * room then send a message back to inform them that the join was successful.
+ *
+ * @param buf   Pointer to a char buffer containing the message
+ * @param rooms Pointer to an array containing all open chat rooms
+ * @param user  Pointer to the user data for the client
+ *
+ * @return  0 on success.
+ *          -1 on error.
+ */
+int handle_join_message(char *buf, struct room_array *rooms, struct user *user)
+{
+    struct join_message msg;
+    if (join_message_deserialize(buf, &msg) != 0)
+    {
+        perror("failed to deserialize the message");
+        return -1;
+    }
+
+    printf("deserialized message\n");
+
+    struct room *room = room_array_get_room(rooms, msg.room_id);
+    if (room == NULL)
+    {
+        printf("room %d does not exist\n", msg.room_id);
+        send_reply_message(user->id, "room %d does not exist", msg.room_id);
+        return 0;
+    }
+
+    int status = room_add_user(room, user);
+    if (status == -1)
+    {
+        printf("room %d is full\n", room->id);
+        send_reply_message(user->id, "room %d is full", room->id);
+        return 0;
+    }
+    else if (status == -2)
+    {
+        printf("user %d is already in a room\n", user->id);
+        send_reply_message(user->id, "you are already in a room: type '/leave' leave to leave your current room", room->id);
+        return 0;
+    }
+
+    if (send_reply_message(user->id, "you have joined room %d", room->id) != 0)
+        printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
+
+    return 0;
+}
+
+/**
  * Handles a message from a client.
  *
  * - Receives message from the server
  * - Determines the type of message and handles it accordingly
  *
- * @param listener      The listener socket
  * @param client        The client socket to receive the message from
  * @param user_table    Double pointer to a hash table containing all users
- * @param pollfds       Pointer to an array containing all open socket fds
+ * @param rooms         Pointer to an array containing all open chat rooms
  *
  * @return  1 on success.
  *          0 when the client closes the connection.
  *          -1 on error.
  */
-int handle_client_message(int listener, int client, struct user **user_table, struct pollfd_array *pollfds)
+int handle_client_message(int client, struct user **user_table, struct room_array *rooms)
 {
     char *recv_buf;
     ssize_t recvd = recvall(client, &recv_buf);
@@ -332,9 +392,17 @@ int handle_client_message(int listener, int client, struct user **user_table, st
     switch (get_message_type(recv_buf))
     {
     case CHAT_MESSAGE:
-        if (handle_chat_message(listener, recv_buf, user, pollfds) != 0)
+        if (handle_chat_message(recv_buf, user, rooms) != 0)
         {
             printf("failed to handle chat message\n");
+            free(recv_buf);
+            return -1;
+        }
+        break;
+    case JOIN_MESSAGE:
+        if (handle_join_message(recv_buf, rooms, user) != 0)
+        {
+            printf("failed to handle join message\n");
             free(recv_buf);
             return -1;
         }
@@ -395,7 +463,8 @@ int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollf
 int main()
 {
     int listener;
-    struct pollfd_array *pollfds;
+    struct pollfd_array *pollfds = pollfd_array_init();
+    struct room_array *rooms = room_array_init(NUM_ROOMS);
     struct user *user_table = NULL;
 
     int status;
@@ -417,12 +486,6 @@ int main()
     if (listen(listener, BACKLOG_LIMIT) == -1)
     {
         perror("error occurred while attempting to allow connections on the listener socket");
-        exit(EXIT_FAILURE);
-    }
-
-    if ((pollfds = pollfd_array_init()) == NULL)
-    {
-        printf("failed to initialize pollfd array\n");
         exit(EXIT_FAILURE);
     }
 
@@ -469,7 +532,7 @@ int main()
                 }
                 else
                 {
-                    int status = handle_client_message(listener, sockfd, &user_table, pollfds);
+                    int status = handle_client_message(sockfd, &user_table, rooms);
                     if (status == 0)
                     {
                         if (handle_client_termination(sockfd, i, pollfds, &user_table) != 0)
