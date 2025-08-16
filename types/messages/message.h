@@ -8,6 +8,7 @@ enum MessageType
     CHAT_MESSAGE,
     NAME_MESSAGE,
     INVALID_MESSAGE,
+    JOIN_MESSAGE,
     REPLY_MESSAGE,
 };
 
