@@ -1,3 +1,6 @@
+#ifndef REPLY_MESSAGE_H
+#define REPLY_MESSAGE_H
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -44,3 +47,5 @@ int reply_message_serialize(struct reply_message *msg, char **buf, size_t *len);
  *          -1 on error (errno is set appropriately).
  */
 int reply_message_deserialize(char *buf, struct reply_message *msg);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef POLLFD_ARRAY_H
+#define POLLFD_ARRAY_H
+
 #include <poll.h>
 #include <stdint.h>
 
@@ -42,3 +45,5 @@ int pollfd_array_append(struct pollfd_array *pollfds, int fd, short events);
  *         -1 on failure.
  */
 int pollfd_array_delete(struct pollfd_array *pollfds, uint32_t i);
+
+#endif

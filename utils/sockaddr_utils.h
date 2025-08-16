@@ -1,4 +1,8 @@
+#ifndef SOCKADDR_UTILS_H
+#define SOCKADDR_UTILS_H
+
 #include <stdint.h>
+#include <stdlib.h>
 
 /**
  * Gets the IP address from a struct sockaddr and stores it an array buf that has a size of n. Since struct sockaddr is
@@ -21,3 +25,5 @@ void get_ip_address(struct sockaddr *sa, char *buf, size_t n);
  * @return  The port number
  */
 uint16_t get_port(struct sockaddr *sa);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef ROOM_ARRAY_H
+#define ROOM_ARRAY_H
+
 #include <stdint.h>
 
 #include "../types/room.h"
@@ -29,3 +32,5 @@ struct room_array *room_array_init(int n);
  *          NULL if the room does not exist.
  */
 struct room *room_array_get_room(struct room_array *rooms, int id);
+
+#endif

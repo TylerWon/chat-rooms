@@ -1,3 +1,6 @@
+#ifndef USER_TABLE_H
+#define USER_TABLE_H
+
 #include "../types/user.h"
 
 /**
@@ -32,3 +35,5 @@ int user_table_delete(struct user **user_table, int id);
  *          NULL if the user is not found.
  */
 struct user *user_table_find(struct user **user_table, int fd);
+
+#endif

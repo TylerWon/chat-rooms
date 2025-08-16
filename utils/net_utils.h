@@ -1,3 +1,8 @@
+#ifndef NET_UTILS_H
+#define NET_UTILS_H
+
+#include <stdlib.h>
+
 #define PORT "4000"
 
 #define SEND_FLAGS 0
@@ -28,3 +33,5 @@ ssize_t sendall(int sockfd, char *buf, size_t len);
  *          -1 on error (errno is set appropriately).
  */
 ssize_t recvall(int sockfd, char **buf);
+
+#endif

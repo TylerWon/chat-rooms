@@ -1,3 +1,6 @@
+#ifndef MESSAGE_H
+#define MESSAGE_H
+
 #include <stdint.h>
 
 typedef uint32_t TOTAL_MSG_LEN;
@@ -22,3 +25,5 @@ enum MessageType
  * @return  The message type
  */
 enum MessageType get_message_type(char *buf);
+
+#endif
