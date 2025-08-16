@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g -MMD -MP  # -MMD generates .d files, -MP avoids errors if headers are deleted
 
 # Object files
-OBJS_COMMON = data_structures/pollfd_array.o messages/chat_message.o messages/message.o messages/name_message.o messages/reply_message.o utils/net_utils.o utils/sockaddr_utils.o
+OBJS_COMMON = data_structures/pollfd_array.o data_structures/room_array.o messages/chat_message.o messages/message.o messages/name_message.o messages/reply_message.o types/room.o utils/net_utils.o utils/sockaddr_utils.o
 OBJS_CLIENT = client.o $(OBJS_COMMON)
 OBJS_SERVER = server.o data_structures/user_table.o $(OBJS_COMMON)
 
