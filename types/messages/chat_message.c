@@ -7,12 +7,10 @@
 
 #include "message.h"
 #include "chat_message.h"
+#include "../../lib/log.h"
 
 int chat_message_serialize(struct chat_message *msg, char **buf, size_t *len)
 {
-    if (msg == NULL || buf == NULL || len == NULL)
-        return -1;
-
     // Determine total message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
     TEXT_LEN text_len = strlen(msg->text) + 1; // +1 for null character
@@ -22,7 +20,10 @@ int chat_message_serialize(struct chat_message *msg, char **buf, size_t *len)
     // Allocate space for the buffer
     *buf = malloc(total_len);
     if (*buf == NULL)
+    {
+        LOG_DEBUG("failed to allocate space for buffer\n");
         return -1;
+    }
 
     char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
@@ -60,11 +61,8 @@ int chat_message_serialize(struct chat_message *msg, char **buf, size_t *len)
     return 0;
 }
 
-int chat_message_deserialize(char *buf, struct chat_message *msg)
+void chat_message_deserialize(char *buf, struct chat_message *msg)
 {
-    if (buf == NULL || msg == NULL)
-        return -1;
-
     // Skip over total message length and message type
     buf += sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE);
 
@@ -87,8 +85,6 @@ int chat_message_deserialize(char *buf, struct chat_message *msg)
 
     // Get text
     memcpy(msg->text, buf, text_len);
-
-    return 0;
 }
 
 void chat_message_print(struct chat_message *msg)

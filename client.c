@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "data_structures/pollfd_array.h"
+#include "lib/log.h"
 #include "types/messages/chat_message.h"
 #include "types/messages/join_message.h"
 #include "types/messages/name_message.h"
@@ -304,44 +305,24 @@ int handle_input(int server)
  * this function will print message to the terminal.
  *
  * @param buf   Pointer to a char buffer containing the message
- *
- * @return  0 on success.
- *          -1 on error.
  */
-int handle_chat_message(char *buf)
+void handle_chat_message(char *buf)
 {
     struct chat_message msg;
-    if (chat_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
-
+    chat_message_deserialize(buf, &msg);
     chat_message_print(&msg);
-
-    return 0;
 }
 
 /**
  * Handles a reply message from the server.
  *
  * @param buf   Pointer to a char buffer containing the message
- *
- * @return  0 on success.
- *          -1 on error.
  */
-int handle_reply_message(char *buf)
+void handle_reply_message(char *buf)
 {
     struct reply_message msg;
-    if (reply_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
-
+    reply_message_deserialize(buf, &msg);
     printf("%s\n", msg.reply);
-
-    return 0;
 }
 
 /**
@@ -375,20 +356,10 @@ int handle_server_message(int server)
     switch (get_message_type(recv_buf))
     {
     case CHAT_MESSAGE:
-        if (handle_chat_message(recv_buf) != 0)
-        {
-            printf("failed to handle chat message\n");
-            free(recv_buf);
-            return -1;
-        }
+        handle_chat_message(recv_buf);
         break;
     case REPLY_MESSAGE:
-        if (handle_reply_message(recv_buf) != 0)
-        {
-            printf("failed to handle reply message\n");
-            free(recv_buf);
-            return -1;
-        }
+        handle_reply_message(recv_buf);
         break;
     default:
         printf("invalid message type\n");

@@ -4,12 +4,10 @@
 
 #include "message.h"
 #include "name_message.h"
+#include "../../lib/log.h"
 
 int name_message_serialize(struct name_message *msg, char **buf, size_t *len)
 {
-    if (msg == NULL || buf == NULL || len == NULL)
-        return -1;
-
     // Determine total message length
     NAME_LEN name_len = strlen(msg->name) + 1; // +1 for null character
     TOTAL_MSG_LEN total_len = sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE) + sizeof(NAME_LEN) + name_len;
@@ -18,7 +16,10 @@ int name_message_serialize(struct name_message *msg, char **buf, size_t *len)
     // Allocate space for the buffer
     *buf = malloc(total_len);
     if (*buf == NULL)
+    {
+        LOG_DEBUG("failed to allocate space for buffer\n");
         return -1;
+    }
 
     char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
@@ -38,16 +39,12 @@ int name_message_serialize(struct name_message *msg, char **buf, size_t *len)
 
     // Write name
     memcpy(b, &msg->name, name_len);
-    b += name_len;
 
     return 0;
 }
 
-int name_message_deserialize(char *buf, struct name_message *msg)
+void name_message_deserialize(char *buf, struct name_message *msg)
 {
-    if (buf == NULL || msg == NULL)
-        return -1;
-
     // Skip over total message length and message type
     buf += sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE);
 
@@ -57,7 +54,4 @@ int name_message_deserialize(char *buf, struct name_message *msg)
 
     // Get name
     memcpy(msg->name, buf, name_len);
-    buf += name_len;
-
-    return 0;
 }

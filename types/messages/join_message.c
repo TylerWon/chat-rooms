@@ -4,12 +4,10 @@
 
 #include "message.h"
 #include "join_message.h"
+#include "../../lib/log.h"
 
 int join_message_serialize(struct join_message *msg, char **buf, size_t *len)
 {
-    if (msg == NULL || buf == NULL || len == NULL)
-        return -1;
-
     // Determine total message length
     TOTAL_MSG_LEN total_len = sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE) + sizeof(ROOM_ID);
     *len = total_len;
@@ -17,7 +15,10 @@ int join_message_serialize(struct join_message *msg, char **buf, size_t *len)
     // Allocate space for the buffer
     *buf = malloc(total_len);
     if (*buf == NULL)
+    {
+        LOG_DEBUG("failed to allocate space for buffer\n");
         return -1;
+    }
 
     char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
@@ -37,16 +38,11 @@ int join_message_serialize(struct join_message *msg, char **buf, size_t *len)
     return 0;
 }
 
-int join_message_deserialize(char *buf, struct join_message *msg)
+void join_message_deserialize(char *buf, struct join_message *msg)
 {
-    if (buf == NULL || msg == NULL)
-        return -1;
-
     // Skip over total message length and message type
     buf += sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE);
 
     // Get room ID
     memcpy(&msg->room_id, buf, sizeof(msg->room_id)); // Don't need to convert room_id to Host Byte Order because it is one byte long
-
-    return 0;
 }

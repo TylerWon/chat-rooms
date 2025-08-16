@@ -4,12 +4,10 @@
 
 #include "message.h"
 #include "reply_message.h"
+#include "../../lib/log.h"
 
 int reply_message_serialize(struct reply_message *msg, char **buf, size_t *len)
 {
-    if (msg == NULL || buf == NULL || len == NULL)
-        return -1;
-
     // Determine total message length
     REPLY_LEN reply_len = strlen(msg->reply) + 1; // +1 for null character
     TOTAL_MSG_LEN total_len = sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE) + sizeof(REPLY_LEN) + reply_len;
@@ -18,7 +16,10 @@ int reply_message_serialize(struct reply_message *msg, char **buf, size_t *len)
     // Allocate space for the buffer
     *buf = malloc(total_len);
     if (*buf == NULL)
+    {
+        LOG_DEBUG("failed to allocate space for buffer\n");
         return -1;
+    }
 
     char *b = *buf; // Use b instead of *buf since we're going to be adding to it
 
@@ -38,16 +39,12 @@ int reply_message_serialize(struct reply_message *msg, char **buf, size_t *len)
 
     // Write reply
     memcpy(b, &msg->reply, reply_len);
-    b += reply_len;
 
     return 0;
 }
 
-int reply_message_deserialize(char *buf, struct reply_message *msg)
+void reply_message_deserialize(char *buf, struct reply_message *msg)
 {
-    if (buf == NULL || msg == NULL)
-        return -1;
-
     // Skip over total message length and message type
     buf += sizeof(TOTAL_MSG_LEN) + sizeof(MSG_TYPE);
 
@@ -57,7 +54,4 @@ int reply_message_deserialize(char *buf, struct reply_message *msg)
 
     // Get reply
     memcpy(msg->reply, buf, reply_len);
-    buf += reply_len;
-
-    return 0;
 }

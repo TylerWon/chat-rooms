@@ -225,11 +225,7 @@ int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
     }
 
     struct chat_message msg;
-    if (chat_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
+    chat_message_deserialize(buf, &msg);
 
     printf("deserialized message\n");
 
@@ -275,18 +271,11 @@ int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
  *
  * @param buf   Pointer to a char buffer containing the message
  * @param user  Pointer to the user data for the client
- *
- * @return  0 on success.
- *          -1 on error.
  */
-int handle_name_message(char *buf, struct user *user)
+void handle_name_message(char *buf, struct user *user)
 {
     struct name_message msg;
-    if (name_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
+    name_message_deserialize(buf, &msg);
 
     printf("deserialized message\n");
 
@@ -295,8 +284,6 @@ int handle_name_message(char *buf, struct user *user)
 
     if (send_reply_message(user->id, "set name to %s", msg.name) != 0)
         printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
-
-    return 0;
 }
 
 /**
@@ -308,18 +295,11 @@ int handle_name_message(char *buf, struct user *user)
  * @param buf   Pointer to a char buffer containing the message
  * @param rooms Pointer to an array containing all open chat rooms
  * @param user  Pointer to the user data for the client
- *
- * @return  0 on success.
- *          -1 on error.
  */
-int handle_join_message(char *buf, struct room_array *rooms, struct user *user)
+void handle_join_message(char *buf, struct room_array *rooms, struct user *user)
 {
     struct join_message msg;
-    if (join_message_deserialize(buf, &msg) != 0)
-    {
-        perror("failed to deserialize the message");
-        return -1;
-    }
+    join_message_deserialize(buf, &msg);
 
     printf("deserialized message\n");
 
@@ -328,7 +308,7 @@ int handle_join_message(char *buf, struct room_array *rooms, struct user *user)
     {
         printf("room %d does not exist\n", msg.room_id);
         send_reply_message(user->id, "room %d does not exist", msg.room_id);
-        return 0;
+        return;
     }
 
     if (user->room != INVALID_ROOM)
@@ -342,19 +322,17 @@ int handle_join_message(char *buf, struct room_array *rooms, struct user *user)
     {
         printf("room %d is full\n", new_room->id);
         send_reply_message(user->id, "room %d is full", new_room->id);
-        return 0;
+        return;
     }
     else if (status == -2)
     {
         printf("user %d is already in a room\n", user->id);
         send_reply_message(user->id, "you are already in a room", new_room->id);
-        return 0;
+        return;
     }
 
     if (send_reply_message(user->id, "you have joined room %d", new_room->id) != 0)
         printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
-
-    return 0;
 }
 
 /**
@@ -406,20 +384,10 @@ int handle_client_message(int client, struct user **user_table, struct room_arra
         }
         break;
     case JOIN_MESSAGE:
-        if (handle_join_message(recv_buf, rooms, user) != 0)
-        {
-            printf("failed to handle join message\n");
-            free(recv_buf);
-            return -1;
-        }
+        handle_join_message(recv_buf, rooms, user);
         break;
     case NAME_MESSAGE:
-        if (handle_name_message(recv_buf, user) != 0)
-        {
-            printf("failed to handle name message\n");
-            free(recv_buf);
-            return -1;
-        }
+        handle_name_message(recv_buf, user);
         break;
     default:
         printf("invalid message type\n");

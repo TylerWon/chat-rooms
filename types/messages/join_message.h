@@ -25,7 +25,7 @@ struct join_message
  * @param len   Pointer to a size_t which will store the size of the buffer
  *
  * @return  0 on success.
- *          -1 on error (errno is set appropriately).
+ *          -1 on error.
  */
 int join_message_serialize(struct join_message *msg, char **buf, size_t *len);
 
@@ -39,10 +39,7 @@ int join_message_serialize(struct join_message *msg, char **buf, size_t *len);
  *
  * @param buf   Pointer to a char buffer which contains the message
  * @param msg   Pointer to a message which will store the deserialized message
- *
- * @return  0 on success.
- *          -1 on error (errno is set appropriately).
  */
-int join_message_deserialize(char *buf, struct join_message *msg);
+void join_message_deserialize(char *buf, struct join_message *msg);
 
 #endif
