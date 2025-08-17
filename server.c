@@ -13,6 +13,7 @@
 #include "data_structures/pollfd_array.h"
 #include "data_structures/room_array.h"
 #include "data_structures/user_table.h"
+#include "lib/log.h"
 #include "types/messages/chat_message.h"
 #include "types/messages/join_message.h"
 #include "types/messages/name_message.h"
@@ -191,7 +192,7 @@ int send_reply_message(int client, char *reply, ...)
 
     if (sendall(client, send_buf, len) == -1)
     {
-        perror("failed to send message");
+        LOG_ERROR("failed to send message");
         free(send_buf);
         return -1;
     }
@@ -251,7 +252,7 @@ int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
 
         if (sendall(receiver, send_buf, len) == -1)
         {
-            printf("failed to send data to socket %d: %s\n", receiver, strerror(errno));
+            LOG_ERROR("failed to send data to socket %d", receiver);
             free(send_buf);
             return -1;
         }
@@ -324,7 +325,7 @@ void handle_join_message(char *buf, struct room_array *rooms, struct user *user)
 
     if (room_add_user(new_room, user) != 0)
     {
-        printf("room %d is full\n", new_room->id);
+        printf("failed to add user %d to room %d\n", user->id, new_room->id);
         send_reply_message(user->id, "room %d is full", new_room->id);
         return;
     }

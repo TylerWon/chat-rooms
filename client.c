@@ -118,7 +118,7 @@ int send_name_message(int server, char *name)
 
     if (sendall(server, send_buf, len) == -1)
     {
-        perror("failed to send message");
+        LOG_ERROR("failed to send message");
         free(send_buf);
         return -1;
     }
@@ -155,7 +155,7 @@ int send_join_message(int server, ROOM_ID room_id)
 
     if (sendall(server, send_buf, len) == -1)
     {
-        perror("failed to send message");
+        LOG_ERROR("failed to send message");
         free(send_buf);
         return -1;
     }
@@ -252,7 +252,7 @@ int send_chat_message(int server, char *text)
 
     if (sendall(server, send_buf, len) == -1)
     {
-        perror("failed to send message");
+        LOG_ERROR("failed to send message");
         free(send_buf);
         return -1;
     }

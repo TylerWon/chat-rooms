@@ -16,7 +16,7 @@ int join_message_serialize(struct join_message *msg, char **buf, size_t *len)
     *buf = malloc(total_len);
     if (*buf == NULL)
     {
-        LOG_DEBUG("failed to allocate space for buffer\n");
+        LOG_ERROR("failed to allocate space for buffer");
         return -1;
     }
 

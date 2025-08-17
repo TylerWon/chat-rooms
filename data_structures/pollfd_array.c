@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "pollfd_array.h"
+#include "../lib/log.h"
 
 #define INITIAL_CAPACITY 5
 
@@ -22,7 +23,7 @@ int resize(uint32_t new_cap, struct pollfd_array *pollfds)
     pollfds->fds = fds;
     pollfds->capacity = new_cap;
 
-    printf("pollfd_array resized to %d\n", pollfds->capacity);
+    LOG_INFO("pollfd_array resized to %d", pollfds->capacity);
 
     return 0;
 }
@@ -31,11 +32,15 @@ struct pollfd_array *pollfd_array_init()
 {
     struct pollfd_array *pollfds = malloc(sizeof(struct pollfd_array));
     if (pollfds == NULL)
+    {
+        LOG_ERROR("failed to allocate space for pollfd array");
         return NULL;
+    }
 
     struct pollfd *fds = calloc(INITIAL_CAPACITY, sizeof(struct pollfd));
     if (fds == NULL)
     {
+        LOG_ERROR("failed to allocate space for %d pollfds", INITIAL_CAPACITY);
         free(pollfds);
         return NULL;
     }
@@ -57,7 +62,7 @@ int pollfd_array_append(struct pollfd_array *pollfds, int fd, short events)
     if (len + 1 > capacity)
         if (resize(2 * capacity, pollfds) != 0)
         {
-            printf("failed to resize pollfd array\n");
+            LOG_ERROR("failed to resize pollfd array");
             return -1;
         }
 
@@ -66,7 +71,7 @@ int pollfd_array_append(struct pollfd_array *pollfds, int fd, short events)
     fds[len].revents = 0;
     pollfds->len++;
 
-    printf("added fd %d to pollfd array\n", fd);
+    LOG_INFO("added fd %d to pollfd array", fd);
 
     return 0;
 }
@@ -79,20 +84,18 @@ int pollfd_array_delete(struct pollfd_array *pollfds, uint32_t i)
 
     if (i >= len)
     {
-        printf("index %i not in pollfd array\n", i);
+        LOG_ERROR("index %i not in pollfd array", i);
         return -1;
     }
 
     fds[i] = fds[len - 1];
     pollfds->len--;
 
-    printf("removed fd at index %d from pollfd array\n", i);
+    LOG_INFO("removed fd at index %d from pollfd array", i);
 
     // Halve size if at least half empty, unless resulting array would be smaller than the initial capacity
     if (pollfds->len <= capacity / 2 && capacity / 2 >= INITIAL_CAPACITY)
-    {
         resize(capacity / 2, pollfds); // No need to return error if resize fails because pollfd array is still valid
-    }
 
     return 0;
 }

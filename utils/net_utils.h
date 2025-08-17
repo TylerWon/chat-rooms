@@ -16,7 +16,7 @@
  * @param len       Length of the buffer in bytes
  *
  * @return  Number of bytes sent on success.
- *          -1 on error (errno is set appropriately).
+ *          -1 on error.
  */
 ssize_t sendall(int sockfd, char *buf, size_t len);
 
@@ -30,7 +30,7 @@ ssize_t sendall(int sockfd, char *buf, size_t len);
  *
  * @return  Number of bytes received on success.
  *          0 when the peer closes the connection.
- *          -1 on error (errno is set appropriately).
+ *          -1 on error.
  */
 ssize_t recvall(int sockfd, char **buf);
 

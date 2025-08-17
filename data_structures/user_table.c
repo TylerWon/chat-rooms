@@ -1,8 +1,9 @@
 #include <stdio.h>
 
+#include "user_table.h"
+#include "../lib/log.h"
 #include "../lib/uthash.h"
 #include "../types/room.h"
-#include "user_table.h"
 
 int user_table_add(struct user **user_table, int id)
 {
@@ -10,14 +11,14 @@ int user_table_add(struct user **user_table, int id)
 
     if (user_table_find(user_table, id) != NULL)
     {
-        printf("user %d already exists in table\n", id);
+        LOG_ERROR("user %d already exists in table", id);
         return -1;
     }
 
     new_user = malloc(sizeof(*new_user));
     if (new_user == NULL)
     {
-        printf("failed to allocate space for new user\n");
+        LOG_ERROR("failed to allocate space for new user");
         return -1;
     }
 
@@ -26,7 +27,7 @@ int user_table_add(struct user **user_table, int id)
     strcpy(new_user->name, "anonymous");
     HASH_ADD_INT(*user_table, id, new_user);
 
-    printf("added user %d to user table\n", id);
+    LOG_INFO("added user %d to user table", id);
 
     return 0;
 }
@@ -36,14 +37,14 @@ int user_table_delete(struct user **user_table, int id)
     struct user *user = user_table_find(user_table, id);
     if (user == NULL)
     {
-        printf("user %d does not exist in table\n", id);
+        LOG_ERROR("user %d does not exist in table", id);
         return -1;
     }
 
     HASH_DEL(*user_table, user);
     free(user);
 
-    printf("deleted user %d from user table\n", id);
+    LOG_INFO("deleted user %d from user table", id);
 
     return 0;
 }

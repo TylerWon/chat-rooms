@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "messages/join_message.h"
 #include "messages/name_message.h"
 #include "../lib/uthash.h"
 
