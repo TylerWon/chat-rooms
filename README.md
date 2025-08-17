@@ -1,6 +1,18 @@
 # Chat Rooms
 
-This is a text-based chat application that allows users to communicate with other users in one of several chat rooms.
+## Overview
+
+This is a simple real-time chat application that allows multiple users to communicate in chat rooms. Each user can 
+choose a name, join a room, send and receive messages, and exit when they’re done. Messages are timestamped so 
+participants can follow the conversation context.
+
+## Features
+
+- Set your name to identify yourself in conversations.
+- Join a specific chat room to connect with others.
+- Send messages to everyone in the room.
+- See messages from other participants, along with the time they were sent.
+- Exit the application cleanly.
 
 ## Set-up
 
