@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,39 +46,39 @@ int get_server_addr_info(char *port, struct addrinfo **res)
 }
 
 /**
- * Creates a socket which is connected to the address provided in addr
+ * Creates a socket for communicating with the server
  *
  * @param res   Pointer to a linked list of addrinfos containing the address used to create the socket
  *
  * @return  The socket file descriptor for the new socket.
  *          -1 on error.
  */
-int create_socket(struct addrinfo *addr)
+int create_server_socket(struct addrinfo *addr)
 {
     struct addrinfo *p;
-    int sockfd;
+    int server;
     for (p = addr; p != NULL; p = p->ai_next)
     {
         // Create socket from address info
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        if ((server = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
         {
-            perror("socket error");
+            LOG_WARN("failed to create socket, trying again...");
             continue;
         }
 
         // Connect to server
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) != 0)
+        if (connect(server, p->ai_addr, p->ai_addrlen) != 0)
         {
-            perror("connect error");
-            close(sockfd);
+            LOG_WARN("failed to connect to server, trying again...");
+            close(server);
             continue;
         }
 
         char ip[INET6_ADDRSTRLEN];
         get_ip_address(p->ai_addr, ip, sizeof(ip));
-        printf("connected to: %s, port %d\n", ip, get_port(p->ai_addr));
+        LOG_INFO("connected to: %s, port %d", ip, get_port(p->ai_addr));
 
-        return sockfd;
+        return server;
     }
 
     return -1;
@@ -110,21 +111,19 @@ int send_name_message(int server, char *name)
     size_t len;
     if (name_message_serialize(&msg, &send_buf, &len) != 0)
     {
-        perror("failed to serialize the message");
+        LOG_ERROR("failed to serialize the name message");
         return -1;
     }
 
-    printf("serialized message\n");
-
     if (sendall(server, send_buf, len) == -1)
     {
-        LOG_ERROR("failed to send message");
+        LOG_ERROR("failed to send the name message");
         free(send_buf);
         return -1;
     }
     free(send_buf);
 
-    printf("sent message\n");
+    LOG_INFO("sent name message to server");
 
     return 0;
 }
@@ -147,21 +146,19 @@ int send_join_message(int server, ROOM_ID room_id)
     size_t len;
     if (join_message_serialize(&msg, &send_buf, &len) != 0)
     {
-        perror("failed to serialize the message");
+        LOG_ERROR("failed to serialize the join message");
         return -1;
     }
 
-    printf("serialized message\n");
-
     if (sendall(server, send_buf, len) == -1)
     {
-        LOG_ERROR("failed to send message");
+        LOG_ERROR("failed to send the join message");
         free(send_buf);
         return -1;
     }
     free(send_buf);
 
-    printf("sent message\n");
+    LOG_INFO("sent join message to server");
 
     return 0;
 }
@@ -181,7 +178,7 @@ void execute_command(char *str, int server)
     char command[COMMAND_SIZE_LIMIT];
     if (sscanf(str, "/%5s", command) != 1)
     {
-        printf("command not provided\n");
+        LOG_ERROR("not a valid command");
         return;
     }
 
@@ -190,12 +187,12 @@ void execute_command(char *str, int server)
         char new_name[NAME_SIZE_LIMIT];
         if (sscanf(str, "/%5s %100s", command, new_name) != 2)
         {
-            printf("name not provided\n");
+            LOG_ERROR("name not provided");
             return;
         }
         if (send_name_message(server, new_name) != 0)
         {
-            printf("failed to set name\n");
+            LOG_ERROR("failed to set name");
             return;
         }
     }
@@ -204,23 +201,19 @@ void execute_command(char *str, int server)
         ROOM_ID room_id;
         if (sscanf(str, "/%5s %hhd", command, &room_id) != 2)
         {
-            printf("room id not provided\n");
+            LOG_ERROR("room id not provided");
             return;
         }
         if (send_join_message(server, room_id) != 0)
         {
-            printf("failed to join room\n");
+            LOG_ERROR("failed to join room");
             return;
         }
     }
     else if (strcmp(command, "exit") == 0)
-    {
         exit(EXIT_SUCCESS);
-    }
     else
-    {
-        printf("not a valid command\n");
-    }
+        LOG_ERROR("not a valid command");
 }
 
 /**
@@ -244,21 +237,19 @@ int send_chat_message(int server, char *text)
     size_t len;
     if (chat_message_serialize(&msg, &send_buf, &len) != 0)
     {
-        perror("failed to serialize the message");
+        LOG_ERROR("failed to serialize the chat message");
         return -1;
     }
 
-    printf("serialized message\n");
-
     if (sendall(server, send_buf, len) == -1)
     {
-        LOG_ERROR("failed to send message");
+        LOG_ERROR("failed to send the chat message");
         free(send_buf);
         return -1;
     }
     free(send_buf);
 
-    printf("sent message\n");
+    LOG_INFO("sent chat message to server");
 
     return 0;
 }
@@ -278,7 +269,7 @@ int handle_input(int server)
     char buf[TEXT_SIZE_LIMIT];
     if (fgets(buf, sizeof(buf), stdin) == NULL)
     {
-        perror("failed to read user input");
+        LOG_ERROR("failed to read user input");
         return -1;
     }
     clear_previous_line();
@@ -291,7 +282,7 @@ int handle_input(int server)
 
     if (send_chat_message(server, buf) != 0)
     {
-        printf("failed to send chat message\n");
+        LOG_ERROR("failed to send chat message");
         return -1;
     }
 
@@ -322,7 +313,7 @@ void handle_reply_message(char *buf)
 {
     struct reply_message msg;
     reply_message_deserialize(buf, &msg);
-    printf("%s\n", msg.reply);
+    printf("** %s **\n", msg.reply);
 }
 
 /**
@@ -342,27 +333,27 @@ int handle_server_message(int server)
     ssize_t recvd = recvall(server, &recv_buf);
     if (recvd == -1)
     {
-        perror("failed to receive message");
+        LOG_ERROR("failed to receive server message");
         return -1;
     }
     else if (recvd == 0)
     {
-        printf("connection closed\n");
+        LOG_ERROR("connection to server closed");
         return -1;
     }
-
-    printf("received message\n");
 
     switch (get_message_type(recv_buf))
     {
     case CHAT_MESSAGE:
+        LOG_INFO("received chat message from server");
         handle_chat_message(recv_buf);
         break;
     case REPLY_MESSAGE:
+        LOG_INFO("received reply message from server");
         handle_reply_message(recv_buf);
         break;
     default:
-        printf("invalid message type\n");
+        LOG_ERROR("invalid message type");
         free(recv_buf);
         return -1;
     }
@@ -380,13 +371,13 @@ int main()
     struct addrinfo *res;
     if ((status = get_server_addr_info(PORT, &res)) != 0)
     {
-        printf("failed to get server's address info: %s\n", gai_strerror(status));
+        LOG_ERROR("failed to get server's address info: %s", gai_strerror(status));
         exit(EXIT_FAILURE);
     }
 
-    if ((server = create_socket(res)) == -1)
+    if ((server = create_server_socket(res)) == -1)
     {
-        printf("failed to create socket\n");
+        LOG_ERROR("failed to create server socket");
         exit(EXIT_FAILURE);
     }
 
@@ -395,13 +386,13 @@ int main()
 
     if (pollfd_array_append(pollfds, server, POLLIN) != 0)
     {
-        printf("failed to append server fd to pollfd array");
+        LOG_ERROR("failed to append server socket to pollfd array");
         exit(EXIT_FAILURE);
     }
 
     if (pollfd_array_append(pollfds, STDIN_FILENO, POLLIN) != 0)
     {
-        printf("failed to append stdin fd to pollfd array\n");
+        LOG_ERROR("failed to append stdin fd to pollfd array");
         exit(EXIT_FAILURE);
     }
 
@@ -409,7 +400,7 @@ int main()
     {
         if (poll(pollfds->fds, pollfds->len, -1) == -1)
         {
-            perror("error occurred while polling sockets for events");
+            LOG_ERROR("failed to poll open sockets: %s", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
@@ -421,7 +412,7 @@ int main()
 
             if (revents & POLLHUP)
             {
-                printf("connection to server closed\n");
+                LOG_ERROR("connection to server closed");
                 exit(EXIT_FAILURE);
             }
 
@@ -431,7 +422,7 @@ int main()
                 {
                     if (handle_input(server) != 0)
                     {
-                        printf("failed to handle user input\n");
+                        LOG_ERROR("failed to handle user input");
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -439,7 +430,7 @@ int main()
                 {
                     if (handle_server_message(server))
                     {
-                        printf("failed to handle server data\n");
+                        LOG_ERROR("failed to handle message from server");
                         exit(EXIT_FAILURE);
                     }
                 }

@@ -65,25 +65,25 @@ int create_listener_socket(struct addrinfo *res)
     {
         if ((listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
         {
-            perror("failed to create listener socket");
+            LOG_WARN("failed to create listener socket, trying again...");
             continue;
         }
 
         int yes = 1;
         if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
         {
-            perror("error occurred while attempting to allow the listener socket to reuse an address");
+            LOG_ERROR("failed to allow socket to re-use an address: %s", strerror(errno));
             return -1;
         }
 
         if (bind(listener, p->ai_addr, p->ai_addrlen) == -1)
         {
-            perror("failed to bind listener socket");
+            LOG_WARN("failed to bind listener socket to address, trying again...");
             close(listener);
             continue;
         }
 
-        printf("created listener socket %d\n", listener);
+        LOG_INFO("created listener socket %d", listener);
 
         return listener;
     }
@@ -109,7 +109,7 @@ int accept_connection(int listener)
 
     char ip[INET6_ADDRSTRLEN];
     get_ip_address(&client_addr, ip, sizeof(ip));
-    printf("new connection from: %s, port %d\n", ip, get_port(&client_addr));
+    LOG_INFO("new connection from: %s, port %d", ip, get_port(&client_addr));
 
     return sockfd;
 }
@@ -133,24 +133,24 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
     int sockfd;
     if ((sockfd = accept_connection(listener)) == -1)
     {
-        perror("failed to accept the connection");
+        LOG_ERROR("failed to accept the connection");
         return -1;
     }
 
     if (pollfd_array_append(pollfds, sockfd, POLLIN) != 0)
     {
-        printf("failed to add fd %d to pollfd array\n", sockfd);
+        LOG_ERROR("failed to add socket fd %d to pollfd array", sockfd);
         close(sockfd);
         return -1;
     }
 
     if (user_table_add(user_table, sockfd))
     {
-        printf("failed to add user with id %d\n", sockfd);
+        LOG_ERROR("failed to add user %d to user table", sockfd);
         return -1;
     }
 
-    printf("created new connection\n");
+    LOG_INFO("created new connection to client %d", sockfd);
 
     return 0;
 }
@@ -161,11 +161,8 @@ int handle_new_client(int listener, struct pollfd_array *pollfds, struct user **
  * @param client    The client socket
  * @param reply     The reply which may contain format specifiers
  * @param ...       Value(s) for format specifier(s) (if any)
- *
- * @return  0 on success.
- *          -1 on error.
  */
-int send_reply_message(int client, char *reply, ...)
+void send_reply_message(int client, char *reply, ...)
 {
     // Fill in format specifiers with values
     va_list args;
@@ -173,7 +170,7 @@ int send_reply_message(int client, char *reply, ...)
 
     char total_reply[REPLY_SIZE_LIMIT];
     if (vsnprintf(total_reply, sizeof(total_reply), reply, args) >= (int)sizeof(total_reply))
-        printf("reply message truncated: %s\n", total_reply);
+        LOG_WARN("reply message truncated: %s", total_reply);
 
     va_end(args);
 
@@ -184,23 +181,19 @@ int send_reply_message(int client, char *reply, ...)
     size_t len;
     if (reply_message_serialize(&msg, &send_buf, &len) != 0)
     {
-        perror("failed to serialize the message");
-        return -1;
+        LOG_ERROR("failed to serialize the reply message");
+        return;
     }
-
-    printf("serialized message\n");
 
     if (sendall(client, send_buf, len) == -1)
     {
-        LOG_ERROR("failed to send message");
+        LOG_ERROR("failed to send the reply message");
         free(send_buf);
-        return -1;
+        return;
     }
     free(send_buf);
 
-    printf("sent message\n");
-
-    return 0;
+    LOG_INFO("sent reply message to client %d", client);
 }
 
 /**
@@ -220,30 +213,23 @@ int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
 {
     if (user->room == INVALID_ROOM)
     {
-        printf("user %d not in a room\n", user->room);
+        LOG_INFO("did not send chat message: client %d is not in a room", user->room);
         send_reply_message(user->id, "you are not in a chat room: type '/join [room number]' to join a room");
         return 0;
     }
 
     struct chat_message msg;
     chat_message_deserialize(buf, &msg);
-
-    printf("deserialized message\n");
-
     time(&msg.timestamp);
     strcpy(msg.name, user->name);
-
-    printf("added name and timestamp to message\n");
 
     char *send_buf;
     size_t len;
     if (chat_message_serialize(&msg, &send_buf, &len) != 0)
     {
-        perror("failed to serialize the message");
+        LOG_ERROR("failed to serialize the chat message");
         return -1;
     }
-
-    printf("serialized message\n");
 
     struct room *room = room_array_get_room(rooms, user->room);
     for (uint8_t i = 0; i < room->num_users; i++)
@@ -252,14 +238,14 @@ int handle_chat_message(char *buf, struct user *user, struct room_array *rooms)
 
         if (sendall(receiver, send_buf, len) == -1)
         {
-            LOG_ERROR("failed to send data to socket %d", receiver);
+            LOG_ERROR("failed to send chat message to client %d", receiver);
             free(send_buf);
             return -1;
         }
     }
     free(send_buf);
 
-    printf("sent message to all other clients in room %d\n", room->id);
+    LOG_INFO("sent chat message from client %d to all clients in room %d", user->id, room->id);
 
     return 0;
 }
@@ -277,14 +263,10 @@ void handle_name_message(char *buf, struct user *user)
 {
     struct name_message msg;
     name_message_deserialize(buf, &msg);
-
-    printf("deserialized message\n");
-
     strcpy(user->name, msg.name);
-    printf("set name of user %d to %s\n", user->id, user->name);
+    LOG_INFO("set name of user %d to %s", user->id, user->name);
 
-    if (send_reply_message(user->id, "set name to %s", msg.name) != 0)
-        printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
+    send_reply_message(user->id, "set name to %s", msg.name);
 }
 
 /**
@@ -302,20 +284,19 @@ void handle_join_message(char *buf, struct room_array *rooms, struct user *user)
     struct join_message msg;
     join_message_deserialize(buf, &msg);
 
-    printf("deserialized message\n");
-
     struct room *new_room = room_array_get_room(rooms, msg.room_id);
     if (new_room == NULL)
     {
-        printf("room %d does not exist\n", msg.room_id);
+        LOG_INFO("did not add user %d to room %d: room does not exist", user->id, msg.room_id);
         send_reply_message(user->id, "room %d does not exist", msg.room_id);
         return;
     }
 
     if (user->room == new_room->id)
     {
-        printf("user %d already in room %d\n", user->id, new_room->id);
+        LOG_INFO("did not add user %d to room %d: user already in room", user->id, new_room->id);
         send_reply_message(user->id, "you are already in room %d", new_room->id);
+        return;
     }
     else if (user->room != INVALID_ROOM)
     {
@@ -325,13 +306,12 @@ void handle_join_message(char *buf, struct room_array *rooms, struct user *user)
 
     if (room_add_user(new_room, user) != 0)
     {
-        printf("failed to add user %d to room %d\n", user->id, new_room->id);
+        LOG_INFO("did not add user %d to room %d: room is full", user->id, new_room->id);
         send_reply_message(user->id, "room %d is full", new_room->id);
         return;
     }
 
-    if (send_reply_message(user->id, "you have joined room %d", new_room->id) != 0)
-        printf("failed to send reply to client %d\n", user->id); // Don't need to return -1 here because its ok if client doesn't get this message
+    send_reply_message(user->id, "you have joined room %d", new_room->id);
 }
 
 /**
@@ -354,42 +334,43 @@ int handle_client_message(int client, struct user **user_table, struct room_arra
     ssize_t recvd = recvall(client, &recv_buf);
     if (recvd == -1)
     {
-        printf("failed to receive message on socket %d, %s\n", client, strerror(errno));
+        LOG_ERROR("failed to receive message from client %d: %s", client, strerror(errno));
         return -1;
     }
     else if (recvd == 0)
     {
-        printf("connection to socket %d closed\n", client);
+        LOG_INFO("connection to client %d closed", client);
         return 0;
     }
-
-    printf("received message\n");
 
     struct user *user = user_table_find(user_table, client);
     if (user == NULL)
     {
-        printf("failed to find user %d\n", client);
+        LOG_ERROR("failed to find user %d", client);
         return -1;
     }
 
     switch (get_message_type(recv_buf))
     {
     case CHAT_MESSAGE:
+        LOG_INFO("received chat message from client %d", user->id);
         if (handle_chat_message(recv_buf, user, rooms) != 0)
         {
-            printf("failed to handle chat message\n");
+            LOG_ERROR("failed to handle chat message");
             free(recv_buf);
             return -1;
         }
         break;
     case JOIN_MESSAGE:
+        LOG_INFO("received join message from client %d", user->id);
         handle_join_message(recv_buf, rooms, user);
         break;
     case NAME_MESSAGE:
+        LOG_INFO("received name message from client %d", user->id);
         handle_name_message(recv_buf, user);
         break;
     default:
-        printf("invalid message type\n");
+        LOG_ERROR("invalid message type");
         free(recv_buf);
         return -1;
     }
@@ -419,14 +400,14 @@ int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollf
 {
     if (pollfd_array_delete(pollfds, i) != 0)
     {
-        printf("failed to delete fd %d from pollfd array\n", client);
+        LOG_ERROR("failed to delete fd %d from pollfd array", client);
         return -1;
     }
 
     struct user *user = user_table_find(user_table, client);
     if (user == NULL)
     {
-        printf("user %d not found\n", client);
+        LOG_ERROR("user %d not found", client);
         return -1;
     }
 
@@ -434,18 +415,18 @@ int handle_client_termination(int client, uint32_t i, struct pollfd_array *pollf
     if (room != NULL)
         if (room_remove_user(room, user) != 0)
         {
-            printf("failed to remove user %d from room %d\n", user->id, room->id);
+            LOG_ERROR("failed to remove user %d from room %d", user->id, room->id);
             return -1;
         }
 
     if (user_table_delete(user_table, client) != 0)
     {
-        printf("failed to delete user %d\n", client);
+        LOG_ERROR("failed to delete user %d", client);
         return -1;
     }
 
     close(client);
-    printf("closed connection to socket %d\n", client);
+    LOG_INFO("closed connection to client %d", client);
 
     return 0;
 }
@@ -461,13 +442,13 @@ int main()
     struct addrinfo *res;
     if ((status = get_server_addr_info(PORT, &res)) != 0)
     {
-        printf("failed to get server's address info: %s\n", gai_strerror(status));
+        LOG_ERROR("failed to get server's address info: %s", gai_strerror(status));
         exit(EXIT_FAILURE);
     }
 
     if ((listener = create_listener_socket(res)) == -1)
     {
-        printf("failed to create listener socket\n");
+        LOG_ERROR("failed to create listener socket");
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(res);
@@ -475,13 +456,13 @@ int main()
 
     if (listen(listener, BACKLOG_LIMIT) == -1)
     {
-        perror("error occurred while attempting to allow connections on the listener socket");
+        LOG_ERROR("failed to set-up listener socket for listening: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if (pollfd_array_append(pollfds, listener, POLLIN) != 0)
     {
-        printf("failed to append listener socket to pollfd array");
+        LOG_ERROR("failed to append listener socket to pollfd array");
         exit(EXIT_FAILURE);
     }
 
@@ -489,7 +470,7 @@ int main()
     {
         if (poll(pollfds->fds, pollfds->len, -1) == -1)
         {
-            perror("error occurred while polling sockets for events");
+            LOG_ERROR("failed to poll open sockets: %s", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
@@ -503,7 +484,7 @@ int main()
             {
                 if (handle_client_termination(sockfd, i, pollfds, rooms, &user_table) != 0)
                 {
-                    printf("failed to close connection to socket %d\n", sockfd);
+                    LOG_ERROR("failed to close connection to client %d", sockfd);
                     exit(EXIT_FAILURE);
                 }
                 i--; // repeat same index because last element in pollfd array has taken its place
@@ -516,7 +497,7 @@ int main()
                 {
                     if (handle_new_client(listener, pollfds, &user_table) != 0)
                     {
-                        printf("failed to create new connection\n");
+                        LOG_ERROR("failed to create new connection");
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -527,14 +508,14 @@ int main()
                     {
                         if (handle_client_termination(sockfd, i, pollfds, rooms, &user_table) != 0)
                         {
-                            printf("failed to close connection to socket %d\n", sockfd);
+                            LOG_ERROR("failed to close connection to client %d", sockfd);
                             exit(EXIT_FAILURE);
                         }
                         i--; // repeat same index because last element in pollfd array has taken its place
                     }
                     else if (status == -1)
                     {
-                        printf("failed to handle client data on socket %d\n", sockfd);
+                        LOG_ERROR("failed to handle message from client %d", sockfd);
                         exit(EXIT_FAILURE);
                     }
                 }

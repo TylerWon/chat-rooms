@@ -23,7 +23,7 @@ int resize(uint32_t new_cap, struct pollfd_array *pollfds)
     pollfds->fds = fds;
     pollfds->capacity = new_cap;
 
-    LOG_INFO("pollfd_array resized to %d", pollfds->capacity);
+    LOG_INFO("resized pollfd array to %d", pollfds->capacity);
 
     return 0;
 }
